@@ -271,41 +271,6 @@ async function switchToWorkspace(workspaceName) {
 }
 
 /**
- * Get or create a subfolder, ensuring it's empty
- */
-async function getOrCreateEmptySubfolder(parentId, folderName) {
-  let subfolder = await findSubfolder(parentId, folderName);
-  
-  if (!subfolder) {
-    // Create the subfolder
-    subfolder = await browser.bookmarks.create({
-      parentId: parentId,
-      title: folderName,
-      type: 'folder'
-    });
-    console.log(`bookspace: Created "${folderName}" subfolder`);
-  } else {
-    // Ensure it's empty by moving any existing items to parent
-    const children = await getFolderChildren(subfolder.id);
-    if (children.length > 0) {
-      console.log(`bookspace: Emptying "${folderName}" subfolder (${children.length} items)`);
-      for (const child of children) {
-        try {
-          await browser.bookmarks.move(child.id, {
-            parentId: parentId
-          });
-          console.log(`bookspace: Moved "${child.title}" out of "${folderName}" folder`);
-        } catch (error) {
-          console.error(`bookspace: Error moving "${child.title}" out:`, error);
-        }
-      }
-    }
-  }
-  
-  return subfolder;
-}
-
-/**
  * Show "none" workspace - only change bookmarks and bookspace folder visible
  */
 async function showNoneWorkspace() {
@@ -333,20 +298,16 @@ async function showNoneWorkspace() {
               !(item.type === 'bookmark' && item.title === 'change bookmarks')
     );
     
-    // If there are items to move, move them to bookspace/bookspace-none
+    // Move all workspace bookmarks and sub-folders to bookspace folder
     if (itemsToMove.length > 0) {
-      // Get or create the bookspace-none subfolder and ensure it's empty
-      const bookspaceNoneFolder = await getOrCreateEmptySubfolder(bookspaceFolder.id, 'bookspace-none');
-      
-      // Move all workspace bookmarks and sub-folders to bookspace/bookspace-none
       for (const item of itemsToMove) {
         try {
           await browser.bookmarks.move(item.id, {
-            parentId: bookspaceNoneFolder.id
+            parentId: bookspaceFolder.id
           });
-          console.log(`bookspace: Moved "${item.title}" to bookspace/bookspace-none`);
+          console.log(`bookspace: Moved "${item.title}" to bookspace folder`);
         } catch (error) {
-          console.error(`bookspace: Error moving "${item.title}" to bookspace-none:`, error);
+          console.error(`bookspace: Error moving "${item.title}" to bookspace:`, error);
         }
       }
     }
