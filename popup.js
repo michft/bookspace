@@ -3,10 +3,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const workspaceInput = document.getElementById('workspace-name');
-  const switchBtn = document.getElementById('switch-btn');
-  const showAllBtn = document.getElementById('show-all-btn');
-  const organizeBtn = document.getElementById('organize-btn');
+  const bookspaceNoneBtn = document.getElementById('bookspace-none-btn');
+  const bookspaceAllBtn = document.getElementById('bookspace-all-btn');
   const messageDiv = document.getElementById('message');
   const currentWorkspaceDiv = document.getElementById('current-workspace');
   const workspaceListDiv = document.getElementById('workspace-list');
@@ -24,17 +22,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       const state = await browser.runtime.sendMessage({ action: 'getState' });
       
       // Update current workspace display
-      if (state.currentWorkspace) {
-        currentWorkspaceDiv.textContent = state.currentWorkspace;
-        currentWorkspaceDiv.className = 'status-value';
+      const currentWorkspace = state.currentWorkspace || 'bookspace-none';
+      currentWorkspaceDiv.textContent = currentWorkspace;
+      currentWorkspaceDiv.className = 'status-value';
+      
+      // Update button states
+      if (currentWorkspace === 'bookspace-none') {
+        bookspaceNoneBtn.classList.add('active');
+        bookspaceAllBtn.classList.remove('active');
+      } else if (currentWorkspace === 'bookspace-all') {
+        bookspaceNoneBtn.classList.remove('active');
+        bookspaceAllBtn.classList.add('active');
       } else {
-        if (state.isOrganized) {
-          currentWorkspaceDiv.textContent = 'none';
-          currentWorkspaceDiv.className = 'status-value';
-        } else {
-          currentWorkspaceDiv.textContent = 'Not organized';
-          currentWorkspaceDiv.className = 'status-value inactive';
-        }
+        bookspaceNoneBtn.classList.remove('active');
+        bookspaceAllBtn.classList.remove('active');
       }
       
       // Update workspace list
@@ -42,10 +43,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (state.workspaceFolders && state.workspaceFolders.length > 0) {
         for (const folder of state.workspaceFolders) {
           const item = document.createElement('span');
-          item.className = 'workspace-item' + (folder === state.currentWorkspace ? ' active' : '');
+          item.className = 'workspace-item' + (folder === currentWorkspace ? ' active' : '');
           item.textContent = folder;
           item.addEventListener('click', () => {
-            workspaceInput.value = folder;
             switchWorkspace(folder);
           });
           workspaceListDiv.appendChild(item);
@@ -59,12 +59,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   async function switchWorkspace(workspaceName) {
     if (!workspaceName) {
-      showMessage('Please enter a workspace name', true);
       return;
     }
     
-    switchBtn.disabled = true;
-    switchBtn.textContent = 'Switching...';
+    // Disable both buttons while switching
+    bookspaceNoneBtn.disabled = true;
+    bookspaceAllBtn.disabled = true;
     
     try {
       const response = await browser.runtime.sendMessage({
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (response.count > 0) {
           showMessage(`Switched to "${workspaceName}" - ${response.count} items`);
         } else {
-          showMessage(response.message || `No bookmarks in "${workspaceName}"`);
+          showMessage(response.message || `Switched to "${workspaceName}"`);
         }
         await refreshState();
       } else {
@@ -86,65 +86,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.error('Error switching workspace:', error);
       showMessage('Error: ' + error.message, true);
     } finally {
-      switchBtn.disabled = false;
-      switchBtn.textContent = 'Switch';
+      bookspaceNoneBtn.disabled = false;
+      bookspaceAllBtn.disabled = false;
     }
   }
   
-  switchBtn.addEventListener('click', () => {
-    switchWorkspace(workspaceInput.value.trim());
+  // bookspace-none button (collapse functionality)
+  bookspaceNoneBtn.addEventListener('click', async () => {
+    await switchWorkspace('bookspace-none');
   });
   
-  workspaceInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      switchWorkspace(workspaceInput.value.trim());
-    }
+  // bookspace-all button (show all functionality)
+  bookspaceAllBtn.addEventListener('click', async () => {
+    await switchWorkspace('bookspace-all');
   });
   
-  showAllBtn.addEventListener('click', async () => {
-    showAllBtn.disabled = true;
-    showAllBtn.textContent = 'Loading...';
-    
-    try {
-      const response = await browser.runtime.sendMessage({ action: 'showAll' });
-      
-      if (response.success) {
-        showMessage(`Showing all ${response.count} items (original layout)`);
-        await refreshState();
-      } else {
-        showMessage(response.error || 'Failed to show all', true);
-      }
-    } catch (error) {
-      console.error('Error showing all:', error);
-      showMessage('Error: ' + error.message, true);
-    } finally {
-      showAllBtn.disabled = false;
-      showAllBtn.textContent = 'Show All';
-    }
-  });
-  
-  organizeBtn.addEventListener('click', async () => {
-    organizeBtn.disabled = true;
-    organizeBtn.textContent = 'Organizing...';
-    
-    try {
-      const response = await browser.runtime.sendMessage({ action: 'organize' });
-      
-      if (response.success) {
-        showMessage(`Organized ${response.movedCount} items into bookspace`);
-        await refreshState();
-      } else {
-        showMessage(response.error || response.message || 'Failed to organize', true);
-      }
-    } catch (error) {
-      console.error('Error organizing:', error);
-      showMessage('Error: ' + error.message, true);
-    } finally {
-      organizeBtn.disabled = false;
-      organizeBtn.textContent = 'Collapse Bookmarks';
-    }
-  });
-  
-  // Initial state load
-  await refreshState();
+  // Initial state load - ensure we're in bookspace-none if no workspace is set
+  const initialState = await browser.runtime.sendMessage({ action: 'getState' });
+  if (!initialState.currentWorkspace) {
+    // Switch to bookspace-none on initial load
+    await switchWorkspace('bookspace-none');
+  } else {
+    await refreshState();
+  }
 });

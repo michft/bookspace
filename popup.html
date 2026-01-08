@@ -67,32 +67,12 @@
       background: #89b4fa;
       color: #1e1e2e;
     }
-    .input-group {
-      margin-bottom: 12px;
+    button.active {
+      background: #89b4fa;
+      color: #1e1e2e;
     }
-    label {
-      display: block;
-      font-size: 11px;
-      color: #6c7086;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 6px;
-    }
-    input {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #45475a;
-      border-radius: 6px;
-      background: #313244;
-      color: #cdd6f4;
-      font-size: 14px;
-    }
-    input:focus {
-      outline: none;
-      border-color: #89b4fa;
-    }
-    input::placeholder {
-      color: #6c7086;
+    button.active:hover {
+      background: #b4befe;
     }
     .button-group {
       display: flex;
@@ -176,22 +156,12 @@
   
   <div class="status-card">
     <div class="status-label">Current Workspace</div>
-    <div id="current-workspace" class="status-value inactive">None (showing all)</div>
+    <div id="current-workspace" class="status-value inactive">bookspace-none</div>
     <div id="workspace-list" class="workspace-list"></div>
-  </div>
-  
-  <div class="input-group">
-    <label for="workspace-name">Switch to Workspace</label>
-    <input type="text" id="workspace-name" placeholder="Enter workspace name">
-  </div>
-  
-  <div class="button-group">
-    <button id="switch-btn" class="btn-primary">Switch</button>
-    <button id="show-all-btn" class="btn-secondary">Show All</button>
-  </div>
-  
-  <div class="button-group">
-    <button id="organize-btn" class="btn-warning">Collapse Bookmarks</button>
+    <div class="button-group" style="margin-top: 12px;">
+      <button id="bookspace-none-btn" class="btn-secondary">bookspace-none</button>
+      <button id="bookspace-all-btn" class="btn-secondary">bookspace-all</button>
+    </div>
   </div>
   
   <div id="message" class="message"></div>
