@@ -3,7 +3,7 @@
   "name": "Bookspace",
   "version": "1.0.0",
   "description": "Load bookmarks from a folder matching the workspace name when a workspace is loaded",
-  "homepage_url": "https://github.com/yourusername/bookspace",
+  "homepage_url": "https://github.com/michft/bookspace",
   "icons": {
     "48": "icons/bookspace.svg",
     "96": "icons/bookspace.svg"
