@@ -2,68 +2,144 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const workspaceInput = document.getElementById('workspace-name');
-  const loadButton = document.getElementById('load-bookmarks');
-  const statusDiv = document.getElementById('status');
+  const switchBtn = document.getElementById('switch-btn');
+  const showAllBtn = document.getElementById('show-all-btn');
+  const organizeBtn = document.getElementById('organize-btn');
+  const messageDiv = document.getElementById('message');
+  const currentWorkspaceDiv = document.getElementById('current-workspace');
+  const workspaceListDiv = document.getElementById('workspace-list');
   
-  // Try to get the current workspace name from storage
-  browser.storage.local.get(['zenWorkspace', 'activeWorkspace', 'workspaceName']).then((result) => {
-    const workspaceName = result.zenWorkspace || result.activeWorkspace || result.workspaceName;
-    if (workspaceName) {
-      workspaceInput.value = workspaceName;
-    }
-  });
-  
-  function showStatus(message, isError = false) {
-    statusDiv.textContent = message;
-    statusDiv.className = 'status ' + (isError ? 'error' : 'success');
+  function showMessage(text, isError = false) {
+    messageDiv.textContent = text;
+    messageDiv.className = 'message ' + (isError ? 'error' : 'success');
     setTimeout(() => {
-      statusDiv.className = 'status';
-      statusDiv.textContent = '';
+      messageDiv.className = 'message';
     }, 3000);
   }
   
-  loadButton.addEventListener('click', async () => {
-    const workspaceName = workspaceInput.value.trim();
-    
+  async function refreshState() {
+    try {
+      const state = await browser.runtime.sendMessage({ action: 'getState' });
+      
+      // Update current workspace display
+      if (state.currentWorkspace) {
+        currentWorkspaceDiv.textContent = state.currentWorkspace;
+        currentWorkspaceDiv.className = 'status-value';
+      } else {
+        currentWorkspaceDiv.textContent = state.isOrganized ? 'None selected' : 'Not organized';
+        currentWorkspaceDiv.className = 'status-value inactive';
+      }
+      
+      // Update workspace list
+      workspaceListDiv.innerHTML = '';
+      if (state.workspaceFolders && state.workspaceFolders.length > 0) {
+        for (const folder of state.workspaceFolders) {
+          const item = document.createElement('span');
+          item.className = 'workspace-item' + (folder === state.currentWorkspace ? ' active' : '');
+          item.textContent = folder;
+          item.addEventListener('click', () => {
+            workspaceInput.value = folder;
+            switchWorkspace(folder);
+          });
+          workspaceListDiv.appendChild(item);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error getting state:', error);
+    }
+  }
+  
+  async function switchWorkspace(workspaceName) {
     if (!workspaceName) {
-      showStatus('Please enter a workspace name', true);
+      showMessage('Please enter a workspace name', true);
       return;
     }
     
-    loadButton.disabled = true;
-    loadButton.textContent = 'Loading...';
+    switchBtn.disabled = true;
+    switchBtn.textContent = 'Switching...';
     
     try {
-      // Send message to background script to load bookmarks
       const response = await browser.runtime.sendMessage({
-        action: 'loadBookmarks',
+        action: 'switchWorkspace',
         workspaceName: workspaceName
       });
       
       if (response.success) {
         if (response.count > 0) {
-          showStatus(`Opened ${response.count} bookmark(s) from "${workspaceName}"`);
+          showMessage(`Switched to "${workspaceName}" - ${response.count} items`);
         } else {
-          showStatus(`No bookmarks found in folder "${workspaceName}"`, true);
+          showMessage(response.message || `No bookmarks in "${workspaceName}"`);
         }
+        await refreshState();
       } else {
-        showStatus(response.error || 'Failed to load bookmarks', true);
+        showMessage(response.error || response.message || 'Failed to switch', true);
       }
     } catch (error) {
-      console.error('Error loading bookmarks:', error);
-      showStatus('Error: ' + error.message, true);
+      console.error('Error switching workspace:', error);
+      showMessage('Error: ' + error.message, true);
     } finally {
-      loadButton.disabled = false;
-      loadButton.textContent = 'Load Bookmarks';
+      switchBtn.disabled = false;
+      switchBtn.textContent = 'Switch';
+    }
+  }
+  
+  switchBtn.addEventListener('click', () => {
+    switchWorkspace(workspaceInput.value.trim());
+  });
+  
+  workspaceInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      switchWorkspace(workspaceInput.value.trim());
     }
   });
   
-  // Allow Enter key to trigger load
-  workspaceInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      loadButton.click();
+  showAllBtn.addEventListener('click', async () => {
+    showAllBtn.disabled = true;
+    showAllBtn.textContent = 'Loading...';
+    
+    try {
+      const response = await browser.runtime.sendMessage({ action: 'showAll' });
+      
+      if (response.success) {
+        showMessage(`Showing all ${response.count} bookmarks`);
+        await refreshState();
+      } else {
+        showMessage(response.error || 'Failed to show all', true);
+      }
+    } catch (error) {
+      console.error('Error showing all:', error);
+      showMessage('Error: ' + error.message, true);
+    } finally {
+      showAllBtn.disabled = false;
+      showAllBtn.textContent = 'Show All';
     }
   });
+  
+  organizeBtn.addEventListener('click', async () => {
+    organizeBtn.disabled = true;
+    organizeBtn.textContent = 'Organizing...';
+    
+    try {
+      const response = await browser.runtime.sendMessage({ action: 'organize' });
+      
+      if (response.success) {
+        showMessage(`Organized ${response.movedCount} items into bookspace`);
+        await refreshState();
+      } else {
+        showMessage(response.error || response.message || 'Failed to organize', true);
+      }
+    } catch (error) {
+      console.error('Error organizing:', error);
+      showMessage('Error: ' + error.message, true);
+    } finally {
+      organizeBtn.disabled = false;
+      organizeBtn.textContent = 'Re-organize';
+    }
+  });
+  
+  // Initial state load
+  await refreshState();
 });

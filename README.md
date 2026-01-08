@@ -1,71 +1,95 @@
 # Bookspace
 
-A web extension for Zen Browser that loads bookmarks from a folder matching the workspace name.
-
-## Important: Zen Browser's Native Workspace Bookmarks
-
-**Zen Browser already has built-in workspace-specific bookmarks!** You can assign bookmarks to specific workspaces using the bookmark editor, and the toolbar will automatically show only bookmarks for the current workspace.
-
-This extension provides an **alternative approach** using bookmark folders named after workspaces, which can be useful if you prefer organizing bookmarks by folder rather than using Zen's native workspace assignment.
-
-## Features
-
-- Manual bookmark loading via browser action popup
-- Finds bookmark folders matching the workspace name (case-insensitive)
-- Opens all bookmarks from the matching folder in new tabs
-- Recursively includes bookmarks from subfolders
-
-## Limitation
-
-**Web extensions cannot modify the native bookmarks toolbar display.** The toolbar is controlled by browser internals that extensions cannot access. This extension opens bookmarks in new tabs rather than filtering the toolbar.
+A web extension for Zen Browser that organizes bookmarks by workspace using folders.
 
 ## How It Works
 
-1. You enter a workspace name in the popup
-2. The extension searches for a bookmark folder with that name
-3. All bookmarks from that folder are opened in new tabs
+1. **On first load**: All bookmarks in the toolbar are moved into a `bookspace` folder
+2. **Create workspace folders**: Inside `bookspace`, create folders matching your workspace names
+3. **Switch workspaces**: Select a workspace to show only those bookmarks in the toolbar
+
+### Example Structure
+
+Before Bookspace:
+```
+Bookmarks Toolbar/
+├── GitHub
+├── Stack Overflow
+├── MDN Docs
+└── YouTube
+```
+
+After bookspace organizes:
+```
+Bookmarks Toolbar/
+└── bookspace/
+    ├── GitHub
+    ├── Stack Overflow
+    ├── MDN Docs
+    └── YouTube
+```
+
+You then organize into workspace folders:
+```
+Bookmarks Toolbar/
+└── bookspace/
+    ├── Development/
+    │   ├── GitHub
+    │   ├── Stack Overflow
+    │   └── MDN Docs
+    └── Personal/
+        └── YouTube
+```
+
+When you switch to "Development" workspace:
+```
+Bookmarks Toolbar/
+├── GitHub
+├── Stack Overflow
+├── MDN Docs
+└── bookspace/
+    └── Personal/
+        └── YouTube
+```
+
+## Features
+
+- **Automatic organization**: Moves all toolbar bookmarks into a `bookspace` folder on install
+- **Workspace switching**: Shows only bookmarks from the selected workspace folder
+- **Preserves structure**: Folders and bookmarks maintain their hierarchy
+- **Quick workspace buttons**: Click workspace names in the popup to switch instantly
+- **Show all**: Option to display all bookmarks at once
 
 ## Installation
 
 1. Clone this repository
 2. Open Zen Browser
-3. Go to `about:debugging` (or `zen://debugging`)
+3. Go to `about:debugging`
 4. Click "This Firefox" (or "This Zen Browser")
 5. Click "Load Temporary Add-on"
 6. Select the `manifest.json` file from this extension
 
 ## Usage
 
-### Automatic Mode
+### Initial Setup
 
-1. Create bookmark folders in your bookmarks with names matching your workspace names
-2. Add bookmarks to those folders
-3. Switch between workspaces in Zen Browser
-4. Bookspace will automatically attempt to detect workspace changes and open the bookmarks from the matching folder
+1. Install the extension - it will automatically move all toolbar bookmarks into a `bookspace` folder
+2. Open the Bookmarks Manager and navigate to `Bookmarks Toolbar/bookspace`
+3. Create folders for each workspace (e.g., "Development", "Research", "Personal")
+4. Drag bookmarks into the appropriate workspace folders
 
-### Manual Mode
+### Switching Workspaces
 
 1. Click the Bookspace icon in the toolbar
-2. Enter the workspace name in the popup
-3. Click "Load Bookmarks" to open all bookmarks from the matching folder
+2. Either:
+   - Click a workspace name from the list, or
+   - Type a workspace name and click "Switch"
+3. The toolbar will update to show only bookmarks from that workspace
 
-**Note:** Since Zen Browser's workspace API is not directly accessible from web extensions, automatic detection may not always work. Use the manual mode for reliable bookmark loading.
+### Other Actions
 
-## Example
-
-If you have a workspace named "Development", create a bookmark folder also named "Development" and add your development-related bookmarks to it. When you switch to the "Development" workspace, Bookspace will automatically open all bookmarks from that folder.
-
-## Limitations
-
-Since Zen Browser's workspace API is not directly accessible from web extensions, Bookspace uses:
-
-- Storage events (if Zen Browser stores workspace info in `browser.storage`)
-- Polling (checks every 2 seconds for workspace changes)
-- Tab/window creation events as fallback indicators
-
-**For best results, use the manual mode via the browser action popup.**
-
-If Zen Browser exposes workspace information through a different mechanism, this extension can be updated to use that API.
+- **Show All**: Moves all bookmarks back to the toolbar (removes bookspace organization)
+- **Re-organize**: Moves any loose toolbar bookmarks back into the bookspace folder
 
 ## Development
 
