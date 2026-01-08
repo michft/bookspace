@@ -309,10 +309,10 @@ async function showAllBookmarks() {
       }
     }
     
-    currentWorkspace = null;
+    currentWorkspace = 'none';
     // Ensure "change bookmarks" stays first
     await ensureChangeBookmarksFirst();
-    console.log(`bookspace: Showing all ${count} items from bookspace (maintaining positions)`);
+    console.log(`bookspace: Showing all ${count} items from bookspace (maintaining positions) - workspace: none`);
     isProcessing = false;
     return { success: true, count };
     

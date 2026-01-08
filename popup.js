@@ -29,20 +29,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentWorkspaceDiv.className = 'status-value';
       } else {
         if (state.isOrganized) {
-          // Check if we're in "no-match" mode (workspace folders visible)
-          try {
-            const toolbarChildren = await browser.bookmarks.getChildren('toolbar_____');
-            const hasWorkspaceFolders = toolbarChildren.some(
-              item => item.type === 'folder' && item.title !== 'bookspace'
-            );
-            currentWorkspaceDiv.textContent = hasWorkspaceFolders ? 'Original layout' : 'None selected';
-          } catch (error) {
-            currentWorkspaceDiv.textContent = 'None selected';
-          }
+          currentWorkspaceDiv.textContent = 'none';
+          currentWorkspaceDiv.className = 'status-value';
         } else {
           currentWorkspaceDiv.textContent = 'Not organized';
+          currentWorkspaceDiv.className = 'status-value inactive';
         }
-        currentWorkspaceDiv.className = 'status-value inactive';
       }
       
       // Update workspace list
@@ -149,7 +141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       showMessage('Error: ' + error.message, true);
     } finally {
       organizeBtn.disabled = false;
-      organizeBtn.textContent = 'Re-organize';
+      organizeBtn.textContent = 'Collapse Bookmarks';
     }
   });
   
