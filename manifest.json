@@ -16,6 +16,14 @@
   "background": {
     "scripts": ["background.js"]
   },
+  "browser_action": {
+    "default_icon": {
+      "48": "icons/bookspace.svg",
+      "96": "icons/bookspace.svg"
+    },
+    "default_title": "Bookspace: Load bookmarks for current workspace",
+    "default_popup": "popup.html"
+  },
   "browser_specific_settings": {
     "gecko": {
       "id": "bookspace@example.com",

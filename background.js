@@ -82,7 +82,7 @@ async function openBookmarksFromFolder(folderName) {
     if (!folder) {
       console.log(`Bookspace: No bookmark folder found matching "${folderName}"`);
       isProcessing = false;
-      return;
+      return { success: false, count: 0 };
     }
     
     const urls = await getBookmarkUrls(folder);
@@ -90,7 +90,7 @@ async function openBookmarksFromFolder(folderName) {
     if (urls.length === 0) {
       console.log(`Bookspace: Folder "${folderName}" contains no bookmarks`);
       isProcessing = false;
-      return;
+      return { success: true, count: 0 };
     }
     
     console.log(`Bookspace: Opening ${urls.length} bookmarks from folder "${folderName}"`);
@@ -113,10 +113,13 @@ async function openBookmarksFromFolder(folderName) {
       }
     }
     
+    isProcessing = false;
+    return { success: true, count: urls.length };
+    
   } catch (error) {
     console.error('Bookspace: Error opening bookmarks:', error);
-  } finally {
     isProcessing = false;
+    throw error;
   }
 }
 
@@ -137,7 +140,9 @@ async function checkWorkspaceChange() {
       lastWorkspaceName = workspaceName;
       
       // Load bookmarks for the new workspace
-      await openBookmarksFromFolder(workspaceName);
+      await openBookmarksFromFolder(workspaceName).catch(err => {
+        console.error('Bookspace: Error loading bookmarks for workspace:', err);
+      });
     }
   } catch (error) {
     // Storage might not be available or workspace info might not be stored there
@@ -195,5 +200,30 @@ browser.runtime.onInstalled.addListener(() => {
 
 // Initial check
 checkWorkspaceChange();
+
+// Listen for messages from popup
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'loadBookmarks') {
+    const workspaceName = message.workspaceName;
+    
+    openBookmarksFromFolder(workspaceName).then(async () => {
+      try {
+        const folder = await findBookmarkFolder(workspaceName);
+        if (folder) {
+          const urls = await getBookmarkUrls(folder);
+          sendResponse({ success: true, count: urls.length });
+        } else {
+          sendResponse({ success: false, error: `No folder found matching "${workspaceName}"` });
+        }
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
+    }).catch((error) => {
+      sendResponse({ success: false, error: error.message });
+    });
+    
+    return true; // Keep the message channel open for async response
+  }
+});
 
 console.log('Bookspace: Extension loaded and monitoring for workspace changes');
