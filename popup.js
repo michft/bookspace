@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const currentWorkspaceDiv = document.getElementById('current-workspace');
   const workspaceListDiv = document.getElementById('workspace-list');
   const debugContentDiv = document.getElementById('debug-content');
+  const currentContainerSpan = document.getElementById('current-container');
+  const containerListDiv = document.getElementById('container-list');
+  const folderListDiv = document.getElementById('folder-list');
   
   function showMessage(text, isError = false) {
     messageDiv.textContent = text;
@@ -16,6 +19,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(() => {
       messageDiv.className = 'message';
     }, 3000);
+  }
+  
+  async function refreshContainerInfo() {
+    try {
+      const info = await browser.runtime.sendMessage({ action: 'getContainerInfo' });
+      
+      // Update current container display
+      if (info.currentContainer) {
+        currentContainerSpan.textContent = info.currentContainer;
+        currentContainerSpan.className = 'info-value';
+      } else {
+        currentContainerSpan.textContent = 'None (default)';
+        currentContainerSpan.className = 'info-value none';
+      }
+      
+      // Update container list
+      containerListDiv.innerHTML = '';
+      if (info.containers && info.containers.length > 0) {
+        for (const container of info.containers) {
+          const tag = document.createElement('span');
+          tag.className = 'tag' + (container.name === info.currentContainer ? ' current' : '');
+          tag.textContent = container.name;
+          containerListDiv.appendChild(tag);
+        }
+      } else {
+        containerListDiv.innerHTML = '<span class="info-value none">No containers</span>';
+      }
+      
+      // Update folder list
+      folderListDiv.innerHTML = '';
+      if (info.workspaceFolders && info.workspaceFolders.length > 0) {
+        for (const folder of info.workspaceFolders) {
+          const item = document.createElement('div');
+          item.className = 'folder-item';
+          item.innerHTML = `
+            <span class="folder-name">${folder.name}</span>
+            <span class="folder-count"><span class="num">${folder.bookmarkCount}</span> bookmarks, <span class="num">${folder.folderCount}</span> folders</span>
+          `;
+          folderListDiv.appendChild(item);
+        }
+      } else {
+        folderListDiv.innerHTML = '<span class="info-value none">No workspace folders</span>';
+      }
+      
+    } catch (error) {
+      console.error('Error getting container info:', error);
+      currentContainerSpan.textContent = 'Error';
+      currentContainerSpan.className = 'info-value none';
+    }
   }
   
   function updateDebugDisplay(state) {
@@ -161,6 +213,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           showMessage(response.message || `Switched to "${workspaceName}"`);
         }
         await refreshState();
+        await refreshContainerInfo();
       } else {
         showMessage(response.error || response.message || 'Failed to switch', true);
       }
@@ -185,4 +238,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Initial state load - detect current workspace from toolbar/bookspace structure
   await refreshState();
+  await refreshContainerInfo();
 });

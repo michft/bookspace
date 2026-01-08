@@ -190,6 +190,64 @@
       color: #6c7086;
       font-style: italic;
     }
+    .info-row {
+      margin: 6px 0;
+    }
+    .info-label {
+      font-size: 11px;
+      color: #6c7086;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .info-value {
+      font-size: 13px;
+      color: #cdd6f4;
+    }
+    .info-value.none {
+      color: #6c7086;
+      font-style: italic;
+    }
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      background: #45475a;
+    }
+    .tag.current {
+      background: #89b4fa;
+      color: #1e1e2e;
+    }
+    .folder-list {
+      margin-top: 4px;
+    }
+    .folder-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 8px;
+      background: #45475a;
+      border-radius: 4px;
+      margin: 4px 0;
+      font-size: 12px;
+    }
+    .folder-name {
+      color: #cdd6f4;
+    }
+    .folder-count {
+      font-size: 10px;
+      color: #6c7086;
+    }
+    .folder-count .num {
+      color: #a6e3a1;
+      font-weight: 500;
+    }
     .error-box {
       padding: 12px;
       border-radius: 6px;
@@ -233,6 +291,27 @@
   <div class="info">
     <strong>How it works:</strong><br>
     Create folders inside bookspace matching your workspace names. Attach Firefox containers to workspace tabs with names matching your bookspace folders. The extension automatically detects workspaces from container names. You can also manually switch workspaces by clicking workspace names.
+  </div>
+  
+  <div class="status-card">
+    <div class="status-label">Container Info</div>
+    <div id="container-info">
+      <div class="info-row">
+        <span class="info-label">Current Tab Container:</span>
+        <span id="current-container" class="info-value">Loading...</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Available Containers:</span>
+        <div id="container-list" class="tag-list"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="status-card">
+    <div class="status-label">Bookspace Folders</div>
+    <div id="bookspace-folders">
+      <div id="folder-list" class="folder-list">Loading...</div>
+    </div>
   </div>
   
   <div class="debug">

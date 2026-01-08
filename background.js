@@ -679,6 +679,7 @@ async function getActiveTabContainerName() {
     }
     
     const currentTab = tabs[0];
+    console.info('bookspace: [CONTAINER] Active tab cookieStoreId:', currentTab.cookieStoreId || 'none (default)');
     
     if (!currentTab || !currentTab.cookieStoreId) {
       console.log('bookspace: Active tab has no cookieStoreId (default container)');
@@ -690,7 +691,8 @@ async function getActiveTabContainerName() {
       const container = await browser.contextualIdentities.get(currentTab.cookieStoreId);
       
       if (container) {
-        console.log(`bookspace: Active tab is in container: "${container.name}"`);
+        console.info(`bookspace: [CONTAINER] Active tab container name: "${container.name}"`);
+        console.info('bookspace: [CONTAINER] Container details:', JSON.stringify(container));
         return container.name;
       } else {
         console.log('bookspace: Container details not found (default context)');
@@ -717,10 +719,62 @@ async function getActiveTabContainerName() {
 async function getAllContainers() {
   try {
     const containers = await browser.contextualIdentities.query({});
+    console.info('bookspace: [CONTEXTUAL_IDENTITIES] All containers:', JSON.stringify(containers.map(c => ({ name: c.name, cookieStoreId: c.cookieStoreId, color: c.color }))));
     return containers.map(c => c.name);
   } catch (error) {
     console.error('bookspace: Error getting all containers:', error);
     return [];
+  }
+}
+
+/**
+ * Get detailed container and bookspace folder information for display
+ */
+async function getContainerInfo() {
+  try {
+    // Get current tab's container
+    const currentContainerName = await getActiveTabContainerName();
+    
+    // Get all containers
+    const allContainers = await browser.contextualIdentities.query({});
+    const containerList = allContainers.map(c => ({
+      name: c.name,
+      color: c.color,
+      icon: c.icon
+    }));
+    
+    // Get bookspace folder info
+    const bookspaceFolder = await findSubfolder(TOOLBAR_ID, BOOKSPACE_FOLDER_NAME);
+    let workspaceFolders = [];
+    
+    if (bookspaceFolder) {
+      const children = await getFolderChildren(bookspaceFolder.id);
+      for (const child of children) {
+        if (child.type === 'folder') {
+          const count = await countItemsInFolder(child.id, true);
+          workspaceFolders.push({
+            name: child.title,
+            bookmarkCount: count.bookmarks,
+            folderCount: count.folders,
+            total: count.total
+          });
+        }
+      }
+    }
+    
+    return {
+      currentContainer: currentContainerName,
+      containers: containerList,
+      workspaceFolders: workspaceFolders
+    };
+  } catch (error) {
+    console.error('bookspace: Error getting container info:', error);
+    return {
+      currentContainer: null,
+      containers: [],
+      workspaceFolders: [],
+      error: error.message
+    };
   }
 }
 
@@ -764,55 +818,6 @@ async function detectCurrentWorkspace() {
       console.info(`bookspace: [DETECTION] Container "${containerName}" has no matching bookspace folder - defaulting to bookspace-none`);
       return 'bookspace-none';
     }
-  } catch (error) {
-    console.error('bookspace: Error detecting workspace:', error);
-    return 'bookspace-error';
-  }
-}
-  try {
-    const bookspaceFolder = await findSubfolder(TOOLBAR_ID, BOOKSPACE_FOLDER_NAME);
-    
-    if (!bookspaceFolder) {
-      console.error('bookspace: Cannot detect workspace - bookspace folder not found');
-      return 'bookspace-error';
-    }
-    
-    const toolbarItems = await getToolbarItems(bookspaceFolder);
-    const bookspaceItems = await getBookspaceItems(bookspaceFolder);
-    
-    // Case 1: bookspace-none - Only change bookmarks and bookspace folder in toolbar
-    if (toolbarItems.length === 0) {
-      console.info('bookspace: [DETECTION] Detected workspace: bookspace-none (toolbar empty except change bookmarks and bookspace)');
-      return 'bookspace-none';
-    }
-    
-    // Case 2: bookspace-all - Bookspace folder is empty AND toolbar has items
-    if (bookspaceItems.length === 0 && toolbarItems.length > 0) {
-      console.info('bookspace: [DETECTION] Detected workspace: bookspace-all (bookspace empty, toolbar has items)');
-      return 'bookspace-all';
-    }
-    
-    // Case 3: Regular workspace - Some items in toolbar AND some items in bookspace AND exactly ONE empty folder
-    if (toolbarItems.length > 0 && bookspaceItems.length > 0) {
-      const emptyFolders = await getEmptyFoldersInBookspace(bookspaceFolder);
-      
-      if (emptyFolders.length === 1) {
-        const workspaceName = emptyFolders[0].title;
-        console.info(`bookspace: [DETECTION] Detected workspace: "${workspaceName}" (single empty folder in bookspace)`);
-        return workspaceName;
-      }
-    }
-    
-    // Case 4: Indeterminate state - log error with details
-    const emptyFolders = await getEmptyFoldersInBookspace(bookspaceFolder);
-    console.error('bookspace: [DETECTION] Cannot determine workspace - indeterminate state', {
-      toolbarItemCount: toolbarItems.length,
-      bookspaceItemCount: bookspaceItems.length,
-      emptyFolderCount: emptyFolders.length,
-      emptyFolderNames: emptyFolders.map(f => f.title)
-    });
-    
-    return 'bookspace-error';
   } catch (error) {
     console.error('bookspace: Error detecting workspace:', error);
     return 'bookspace-error';
@@ -980,6 +985,11 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   
   if (message.action === 'getState') {
     getCurrentState().then(sendResponse);
+    return true;
+  }
+  
+  if (message.action === 'getContainerInfo') {
+    getContainerInfo().then(sendResponse);
     return true;
   }
 });
