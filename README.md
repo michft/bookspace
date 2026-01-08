@@ -1,22 +1,29 @@
 # Bookspace
 
-A web extension for Zen Browser that automatically loads bookmarks from a folder matching the workspace name when a workspace is loaded.
+A web extension for Zen Browser that loads bookmarks from a folder matching the workspace name.
+
+## Important: Zen Browser's Native Workspace Bookmarks
+
+**Zen Browser already has built-in workspace-specific bookmarks!** You can assign bookmarks to specific workspaces using the bookmark editor, and the toolbar will automatically show only bookmarks for the current workspace.
+
+This extension provides an **alternative approach** using bookmark folders named after workspaces, which can be useful if you prefer organizing bookmarks by folder rather than using Zen's native workspace assignment.
 
 ## Features
 
-- Automatically detects workspace changes (via storage events and polling)
 - Manual bookmark loading via browser action popup
 - Finds bookmark folders matching the workspace name (case-insensitive)
 - Opens all bookmarks from the matching folder in new tabs
 - Recursively includes bookmarks from subfolders
 
+## Limitation
+
+**Web extensions cannot modify the native bookmarks toolbar display.** The toolbar is controlled by browser internals that extensions cannot access. This extension opens bookmarks in new tabs rather than filtering the toolbar.
+
 ## How It Works
 
-When a workspace is loaded in Zen Browser, Bookspace:
-
-1. Detects the workspace change (via storage events or polling)
-2. Searches for a bookmark folder with a name matching the workspace name
-3. Opens all bookmarks from that folder (and subfolders) in new tabs
+1. You enter a workspace name in the popup
+2. The extension searches for a bookmark folder with that name
+3. All bookmarks from that folder are opened in new tabs
 
 ## Installation
 
