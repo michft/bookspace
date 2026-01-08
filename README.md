@@ -70,4 +70,13 @@ The extension uses:
 
 ## License
 
-MPL 2.0
+This work is licensed under the Creative Commons Attribution-NonCommercial 4.0 
+International License (CC BY-NC 4.0).
+
+To view a copy of this license, visit 
+http://creativecommons.org/licenses/by-nc/4.0/ or see the [LICENSE](LICENSE) file.
+
+**Summary:**
+- ✅ You can share and adapt this work
+- ✅ You must give appropriate credit
+- ❌ You cannot use this work for commercial purposes
