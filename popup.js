@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const currentContainerSpan = document.getElementById('current-container');
   const containerListDiv = document.getElementById('container-list');
   const folderListDiv = document.getElementById('folder-list');
+  const apiDebugContentDiv = document.getElementById('api-debug-content');
   
   function showMessage(text, isError = false) {
     messageDiv.textContent = text;
@@ -19,6 +20,116 @@ document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(() => {
       messageDiv.className = 'message';
     }, 3000);
+  }
+  
+  async function checkApiAvailability() {
+    if (!apiDebugContentDiv) return;
+    
+    const checks = [];
+    
+    // Check browser object
+    checks.push({
+      name: 'browser',
+      available: typeof browser !== 'undefined',
+      value: typeof browser
+    });
+    
+    // Check browser.tabs
+    checks.push({
+      name: 'browser.tabs',
+      available: typeof browser !== 'undefined' && typeof browser.tabs !== 'undefined',
+      value: typeof browser?.tabs
+    });
+    
+    // Check browser.tabs.query
+    checks.push({
+      name: 'browser.tabs.query',
+      available: typeof browser !== 'undefined' && typeof browser.tabs?.query === 'function',
+      value: typeof browser?.tabs?.query
+    });
+    
+    // Check browser.contextualIdentities
+    checks.push({
+      name: 'browser.contextualIdentities',
+      available: typeof browser !== 'undefined' && typeof browser.contextualIdentities !== 'undefined',
+      value: typeof browser?.contextualIdentities
+    });
+    
+    // Check browser.contextualIdentities.get
+    checks.push({
+      name: 'browser.contextualIdentities.get',
+      available: typeof browser !== 'undefined' && typeof browser.contextualIdentities?.get === 'function',
+      value: typeof browser?.contextualIdentities?.get
+    });
+    
+    // Check browser.contextualIdentities.query
+    checks.push({
+      name: 'browser.contextualIdentities.query',
+      available: typeof browser !== 'undefined' && typeof browser.contextualIdentities?.query === 'function',
+      value: typeof browser?.contextualIdentities?.query
+    });
+    
+    // Try to get active tab info
+    let tabInfo = { error: null, cookieStoreId: null };
+    try {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+      if (tabs && tabs.length > 0) {
+        tabInfo.cookieStoreId = tabs[0].cookieStoreId || 'undefined';
+        tabInfo.tabId = tabs[0].id;
+      } else {
+        tabInfo.error = 'No active tab found';
+      }
+    } catch (e) {
+      tabInfo.error = e.message;
+    }
+    
+    // Try to query contextualIdentities
+    let contextualIdentitiesInfo = { error: null, count: 0 };
+    try {
+      const containers = await browser.contextualIdentities.query({});
+      contextualIdentitiesInfo.count = containers.length;
+      contextualIdentitiesInfo.names = containers.map(c => c.name);
+    } catch (e) {
+      contextualIdentitiesInfo.error = e.message;
+    }
+    
+    // Try to get container for current tab
+    let containerGetInfo = { error: null, name: null };
+    if (tabInfo.cookieStoreId && tabInfo.cookieStoreId !== 'undefined') {
+      try {
+        const container = await browser.contextualIdentities.get(tabInfo.cookieStoreId);
+        containerGetInfo.name = container?.name || 'unknown';
+        containerGetInfo.color = container?.color;
+      } catch (e) {
+        containerGetInfo.error = e.message;
+      }
+    } else {
+      containerGetInfo.error = 'No cookieStoreId (default container)';
+    }
+    
+    // Render debug output
+    const formatCheck = (check) => {
+      const status = check.available 
+        ? '<span class="debug-value true">✓</span>' 
+        : '<span class="debug-value false">✗</span>';
+      return `<div class="debug-item">${status} <span class="debug-key">${check.name}:</span> <span class="debug-value">${check.value}</span></div>`;
+    };
+    
+    const formatResult = (label, result) => {
+      if (result.error) {
+        return `<div class="debug-item"><span class="debug-key">${label}:</span> <span class="debug-value false">${result.error}</span></div>`;
+      }
+      return `<div class="debug-item"><span class="debug-key">${label}:</span> <span class="debug-value true">${JSON.stringify(result)}</span></div>`;
+    };
+    
+    apiDebugContentDiv.innerHTML = `
+      <div style="margin-bottom: 8px; color: #f5c2e7;">API Checks:</div>
+      ${checks.map(formatCheck).join('')}
+      <div style="margin: 8px 0; color: #f5c2e7;">Live Tests:</div>
+      ${formatResult('tabs.query result', tabInfo)}
+      ${formatResult('contextualIdentities.query', contextualIdentitiesInfo)}
+      ${formatResult('contextualIdentities.get', containerGetInfo)}
+    `;
   }
   
   async function refreshContainerInfo() {
@@ -239,4 +350,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initial state load - detect current workspace from toolbar/bookspace structure
   await refreshState();
   await refreshContainerInfo();
+  await checkApiAvailability();
 });
