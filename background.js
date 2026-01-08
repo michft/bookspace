@@ -686,6 +686,13 @@ async function getActiveTabContainerName() {
       return null;
     }
     
+    // Check if it's the default container (not a contextual identity)
+    // firefox-default is not a real contextual identity and will throw an error
+    if (currentTab.cookieStoreId === 'firefox-default') {
+      console.info('bookspace: [CONTAINER] Default container (firefox-default)');
+      return null;
+    }
+    
     // Get the container (contextual identity) details using the cookieStoreId
     try {
       const container = await browser.contextualIdentities.get(currentTab.cookieStoreId);
@@ -699,8 +706,8 @@ async function getActiveTabContainerName() {
         return null;
       }
     } catch (error) {
-      // If get() fails, it might be the default container
-      if (error.message && error.message.includes('No matching identity')) {
+      // If get() fails, it might be the default container or an invalid identity
+      if (error.message && (error.message.includes('No matching identity') || error.message.includes('Invalid contextual identity'))) {
         console.log('bookspace: No matching identity (default container)');
         return null;
       }
@@ -964,6 +971,66 @@ browser.runtime.onStartup.addListener(async () => {
   }
   // Ensure the change bookmarks bookmark exists
   await createChangeBookmarksBookmark();
+});
+
+// Listen for tab activation to auto-switch workspaces based on container
+browser.tabs.onActivated.addListener(async (activeInfo) => {
+  try {
+    // Get the activated tab's details
+    const tab = await browser.tabs.get(activeInfo.tabId);
+    
+    if (!tab || !tab.cookieStoreId) {
+      console.info('bookspace: [TAB_ACTIVATED] No cookieStoreId for activated tab');
+      return;
+    }
+    
+    // Handle default container
+    if (tab.cookieStoreId === 'firefox-default') {
+      console.info('bookspace: [TAB_ACTIVATED] Default container tab activated');
+      // Don't auto-switch for default container tabs
+      return;
+    }
+    
+    // Get the container name
+    let containerName = null;
+    try {
+      const container = await browser.contextualIdentities.get(tab.cookieStoreId);
+      containerName = container?.name;
+    } catch (e) {
+      console.log('bookspace: [TAB_ACTIVATED] Could not get container:', e.message);
+      return;
+    }
+    
+    if (!containerName) {
+      console.info('bookspace: [TAB_ACTIVATED] No container name found');
+      return;
+    }
+    
+    console.info(`bookspace: [TAB_ACTIVATED] Tab activated in container: "${containerName}"`);
+    
+    // Check if container name matches a bookspace folder
+    const bookspaceFolder = await findSubfolder(TOOLBAR_ID, BOOKSPACE_FOLDER_NAME);
+    if (!bookspaceFolder) {
+      console.log('bookspace: [TAB_ACTIVATED] No bookspace folder found');
+      return;
+    }
+    
+    const workspaceFolder = await findSubfolder(bookspaceFolder.id, containerName);
+    
+    if (workspaceFolder) {
+      // Container name matches a bookspace folder - check if we need to switch
+      if (currentWorkspace !== containerName) {
+        console.info(`bookspace: [TAB_ACTIVATED] Auto-switching to workspace: "${containerName}"`);
+        await switchToWorkspace(containerName);
+      } else {
+        console.info(`bookspace: [TAB_ACTIVATED] Already in workspace: "${containerName}"`);
+      }
+    } else {
+      console.info(`bookspace: [TAB_ACTIVATED] Container "${containerName}" has no matching bookspace folder`);
+    }
+  } catch (error) {
+    console.error('bookspace: [TAB_ACTIVATED] Error handling tab activation:', error);
+  }
 });
 
 // Listen for messages from popup

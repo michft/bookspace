@@ -96,12 +96,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Try to get container for current tab
     let containerGetInfo = { error: null, name: null };
     if (tabInfo.cookieStoreId && tabInfo.cookieStoreId !== 'undefined') {
-      try {
-        const container = await browser.contextualIdentities.get(tabInfo.cookieStoreId);
-        containerGetInfo.name = container?.name || 'unknown';
-        containerGetInfo.color = container?.color;
-      } catch (e) {
-        containerGetInfo.error = e.message;
+      // Handle firefox-default specially - it's not a real contextual identity
+      if (tabInfo.cookieStoreId === 'firefox-default') {
+        containerGetInfo.name = null;
+        containerGetInfo.isDefault = true;
+        containerGetInfo.note = 'Default container (firefox-default) - not a contextual identity';
+      } else {
+        try {
+          const container = await browser.contextualIdentities.get(tabInfo.cookieStoreId);
+          containerGetInfo.name = container?.name || 'unknown';
+          containerGetInfo.color = container?.color;
+        } catch (e) {
+          containerGetInfo.error = e.message;
+        }
       }
     } else {
       containerGetInfo.error = 'No cookieStoreId (default container)';
