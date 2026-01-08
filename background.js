@@ -622,6 +622,103 @@ async function showAllBookmarks() {
 }
 
 /**
+ * Get toolbar items (excluding change bookmarks and bookspace folder)
+ */
+async function getToolbarItems(bookspaceFolder) {
+  const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
+  return toolbarChildren.filter(
+    item => item.id !== bookspaceFolder?.id && 
+            !(item.type === 'bookmark' && item.title === 'change bookmarks')
+  );
+}
+
+/**
+ * Get items in bookspace folder
+ */
+async function getBookspaceItems(bookspaceFolder) {
+  if (!bookspaceFolder) {
+    return [];
+  }
+  return await getFolderChildren(bookspaceFolder.id);
+}
+
+/**
+ * Get empty folders in bookspace (folders with no children)
+ */
+async function getEmptyFoldersInBookspace(bookspaceFolder) {
+  if (!bookspaceFolder) {
+    return [];
+  }
+  
+  const bookspaceItems = await getBookspaceItems(bookspaceFolder);
+  const folders = bookspaceItems.filter(item => item.type === 'folder');
+  const emptyFolders = [];
+  
+  for (const folder of folders) {
+    const children = await getFolderChildren(folder.id);
+    if (children.length === 0) {
+      emptyFolders.push(folder);
+    }
+  }
+  
+  return emptyFolders;
+}
+
+/**
+ * Detect current workspace by examining toolbar and bookspace folder structure
+ */
+async function detectCurrentWorkspace() {
+  try {
+    const bookspaceFolder = await findSubfolder(TOOLBAR_ID, BOOKSPACE_FOLDER_NAME);
+    
+    if (!bookspaceFolder) {
+      console.error('bookspace: Cannot detect workspace - bookspace folder not found');
+      return 'bookspace-error';
+    }
+    
+    const toolbarItems = await getToolbarItems(bookspaceFolder);
+    const bookspaceItems = await getBookspaceItems(bookspaceFolder);
+    
+    // Case 1: bookspace-none - Only change bookmarks and bookspace folder in toolbar
+    if (toolbarItems.length === 0) {
+      console.info('bookspace: [DETECTION] Detected workspace: bookspace-none (toolbar empty except change bookmarks and bookspace)');
+      return 'bookspace-none';
+    }
+    
+    // Case 2: bookspace-all - Bookspace folder is empty AND toolbar has items
+    if (bookspaceItems.length === 0 && toolbarItems.length > 0) {
+      console.info('bookspace: [DETECTION] Detected workspace: bookspace-all (bookspace empty, toolbar has items)');
+      return 'bookspace-all';
+    }
+    
+    // Case 3: Regular workspace - Some items in toolbar AND some items in bookspace AND exactly ONE empty folder
+    if (toolbarItems.length > 0 && bookspaceItems.length > 0) {
+      const emptyFolders = await getEmptyFoldersInBookspace(bookspaceFolder);
+      
+      if (emptyFolders.length === 1) {
+        const workspaceName = emptyFolders[0].title;
+        console.info(`bookspace: [DETECTION] Detected workspace: "${workspaceName}" (single empty folder in bookspace)`);
+        return workspaceName;
+      }
+    }
+    
+    // Case 4: Indeterminate state - log error with details
+    const emptyFolders = await getEmptyFoldersInBookspace(bookspaceFolder);
+    console.error('bookspace: [DETECTION] Cannot determine workspace - indeterminate state', {
+      toolbarItemCount: toolbarItems.length,
+      bookspaceItemCount: bookspaceItems.length,
+      emptyFolderCount: emptyFolders.length,
+      emptyFolderNames: emptyFolders.map(f => f.title)
+    });
+    
+    return 'bookspace-error';
+  } catch (error) {
+    console.error('bookspace: Error detecting workspace:', error);
+    return 'bookspace-error';
+  }
+}
+
+/**
  * Get current state
  */
 async function getCurrentState() {
@@ -629,10 +726,19 @@ async function getCurrentState() {
     const bookspaceFolder = await findSubfolder(TOOLBAR_ID, BOOKSPACE_FOLDER_NAME);
     const isOrganized = !!bookspaceFolder;
     
+    // If currentWorkspace is null, try to detect it
+    let detectedWorkspace = currentWorkspace;
+    if (!detectedWorkspace) {
+      detectedWorkspace = await detectCurrentWorkspace();
+      if (detectedWorkspace) {
+        currentWorkspace = detectedWorkspace;
+      }
+    }
+    
     let workspaceFolders = [];
     
     // If in bookspace-all mode, workspace folders are at toolbar root level
-    if (currentWorkspace && currentWorkspace.toLowerCase() === 'bookspace-all') {
+    if (detectedWorkspace && detectedWorkspace.toLowerCase() === 'bookspace-all') {
       const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
       // Get all folders from toolbar root (excluding bookspace folder and change bookmarks)
       workspaceFolders = toolbarChildren
@@ -651,7 +757,7 @@ async function getCurrentState() {
     
     return {
       isOrganized,
-      currentWorkspace,
+      currentWorkspace: detectedWorkspace,
       workspaceFolders,
       isProcessing
     };

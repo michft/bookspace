@@ -59,6 +59,34 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       // Update current workspace display
       const currentWorkspace = state.currentWorkspace || 'none';
+      
+      // Handle bookspace-error state
+      const errorBox = document.getElementById('error-box');
+      const errorMessage = document.getElementById('error-message');
+      
+      if (currentWorkspace === 'bookspace-error') {
+        // Show error box
+        errorBox.classList.add('show');
+        errorMessage.textContent = 'Cannot determine current workspace state. Indeterminate state detected. Check browser console for details.';
+        
+        // Disable transition buttons
+        bookspaceNoneBtn.disabled = true;
+        bookspaceAllBtn.disabled = true;
+        
+        // Update workspace display
+        currentWorkspaceDiv.textContent = 'bookspace-error';
+        currentWorkspaceDiv.className = 'status-value';
+        currentWorkspaceDiv.style.color = '#f38ba8';
+        
+        return;
+      } else {
+        // Hide error box and enable buttons
+        errorBox.classList.remove('show');
+        bookspaceNoneBtn.disabled = false;
+        bookspaceAllBtn.disabled = false;
+        currentWorkspaceDiv.style.color = '';
+      }
+      
       // Display 'bookspace-none' in UI but internally it's 'none'
       const displayWorkspace = currentWorkspace === 'none' ? 'bookspace-none' : currentWorkspace;
       currentWorkspaceDiv.textContent = displayWorkspace;
@@ -105,6 +133,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Normalize "bookspace-none" to "none" for comparison
     const normalizedWorkspaceName = (workspaceName.toLowerCase() === 'bookspace-none') ? 'none' : workspaceName.toLowerCase();
     const state = await browser.runtime.sendMessage({ action: 'getState' });
+    
+    // Prevent transitions if in error state
+    if (state.currentWorkspace === 'bookspace-error') {
+      showMessage('Cannot switch workspace - error state detected. Check browser console.', true);
+      return;
+    }
+    
     if (state.currentWorkspace && state.currentWorkspace.toLowerCase() === normalizedWorkspaceName) {
       return; // Already in this workspace, no action needed
     }
@@ -148,12 +183,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await switchWorkspace('bookspace-all');
   });
   
-  // Initial state load - ensure we're in bookspace-none if no workspace is set
-  const initialState = await browser.runtime.sendMessage({ action: 'getState' });
-  if (!initialState.currentWorkspace) {
-    // Switch to bookspace-none on initial load
-    await switchWorkspace('bookspace-none');
-  } else {
-    await refreshState();
-  }
+  // Initial state load - detect current workspace from toolbar/bookspace structure
+  await refreshState();
 });

@@ -190,6 +190,24 @@
       color: #6c7086;
       font-style: italic;
     }
+    .error-box {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      background: #f38ba8;
+      color: #1e1e2e;
+      font-size: 12px;
+      line-height: 1.5;
+      display: none;
+    }
+    .error-box.show {
+      display: block;
+    }
+    .error-box strong {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -206,6 +224,11 @@
   </div>
   
   <div id="message" class="message"></div>
+  
+  <div id="error-box" class="error-box">
+    <strong>⚠️ Workspace Detection Error</strong>
+    <span id="error-message">Cannot determine current workspace state. Please check the browser console for details.</span>
+  </div>
   
   <div class="info">
     <strong>How it works:</strong><br>
