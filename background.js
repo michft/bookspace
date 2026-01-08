@@ -205,6 +205,7 @@ async function switchToWorkspace(workspaceName) {
     }
     
     // Move all items from new workspace folder to toolbar root
+    // Start at index 1 (after "change bookmarks" which is at index 0)
     const workspaceChildren = await getFolderChildren(workspaceFolder.id);
     let displayedCount = 0;
     
@@ -212,7 +213,7 @@ async function switchToWorkspace(workspaceName) {
       try {
         await browser.bookmarks.move(item.id, {
           parentId: TOOLBAR_ID,
-          index: displayedCount // Place before bookspace folder
+          index: displayedCount + 1 // Place after "change bookmarks" (index 0)
         });
         displayedCount++;
         console.log(`bookspace: Displayed "${item.title}" in toolbar`);
@@ -286,6 +287,7 @@ async function showAllBookmarks() {
     }
     
     // Now move all bookspace children to toolbar, maintaining their relative positions
+    // Start at index 1 (after "change bookmarks" which is at index 0)
     const bookspaceChildren = await getFolderChildren(bookspaceFolder.id);
     let count = 0;
     
@@ -293,7 +295,7 @@ async function showAllBookmarks() {
       try {
         await browser.bookmarks.move(item.id, {
           parentId: TOOLBAR_ID,
-          index: count
+          index: count + 1 // Place after "change bookmarks" (index 0)
         });
         count++;
         console.log(`bookspace: Displayed "${item.title}" in toolbar (${item.type})`);
@@ -348,6 +350,7 @@ async function getCurrentState() {
 
 /**
  * Create or update the "change bookmarks" bookmark that links to popup.html
+ * Always places it at index 0 (first position)
  */
 async function createChangeBookmarksBookmark() {
   try {
@@ -368,17 +371,26 @@ async function createChangeBookmarksBookmark() {
         });
         console.log('bookspace: Updated "change bookmarks" bookmark URL');
       }
+      // Ensure it's at index 0
+      try {
+        await browser.bookmarks.move(existingBookmark.id, {
+          index: 0
+        });
+      } catch (error) {
+        // Might already be at 0, that's okay
+      }
       return existingBookmark;
     }
     
-    // Create new bookmark
+    // Create new bookmark at index 0
     const bookmark = await browser.bookmarks.create({
       parentId: TOOLBAR_ID,
       title: 'change bookmarks',
-      url: popupUrl
+      url: popupUrl,
+      index: 0
     });
     
-    console.log('bookspace: Created "change bookmarks" bookmark');
+    console.log('bookspace: Created "change bookmarks" bookmark at position 0');
     return bookmark;
     
   } catch (error) {
