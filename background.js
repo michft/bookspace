@@ -303,7 +303,7 @@ async function showNoMatch() {
 }
 
 /**
- * Show all bookmarks (move everything from bookspace subfolders to toolbar, flattened)
+ * Show all bookmarks (move everything from bookspace to toolbar, maintaining relative positions)
  */
 async function showAllBookmarks() {
   if (isProcessing) {
@@ -316,18 +316,45 @@ async function showAllBookmarks() {
   try {
     const bookspaceFolder = await getOrCreateBookspaceFolder();
     
-    // First, move any loose items in toolbar back into bookspace (except change bookmarks)
-    const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
-    for (const item of toolbarChildren) {
-      if (item.id === bookspaceFolder.id) continue;
-      if (item.type === 'bookmark' && item.title === 'change bookmarks') continue;
+    // First, if there's a current workspace, move its bookmarks back into their folder
+    if (currentWorkspace) {
+      const previousWorkspaceFolder = await findSubfolder(bookspaceFolder.id, currentWorkspace);
       
-      await browser.bookmarks.move(item.id, {
-        parentId: bookspaceFolder.id
-      });
+      if (previousWorkspaceFolder) {
+        const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
+        const itemsToMoveBack = toolbarChildren.filter(
+          item => item.id !== bookspaceFolder.id && 
+                  !(item.type === 'bookmark' && item.title === 'change bookmarks')
+        );
+        
+        for (const item of itemsToMoveBack) {
+          try {
+            await browser.bookmarks.move(item.id, {
+              parentId: previousWorkspaceFolder.id
+            });
+          } catch (error) {
+            console.error(`bookspace: Error moving "${item.title}" back:`, error);
+          }
+        }
+      }
+    } else {
+      // No current workspace, but move any loose items back into bookspace
+      const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
+      for (const item of toolbarChildren) {
+        if (item.id === bookspaceFolder.id) continue;
+        if (item.type === 'bookmark' && item.title === 'change bookmarks') continue;
+        
+        try {
+          await browser.bookmarks.move(item.id, {
+            parentId: bookspaceFolder.id
+          });
+        } catch (error) {
+          console.error(`bookspace: Error moving "${item.title}" back:`, error);
+        }
+      }
     }
     
-    // Now move all bookspace children to toolbar
+    // Now move all bookspace children to toolbar, maintaining their relative positions
     const bookspaceChildren = await getFolderChildren(bookspaceFolder.id);
     let count = 0;
     
@@ -338,22 +365,14 @@ async function showAllBookmarks() {
           index: count
         });
         count++;
+        console.log(`bookspace: Displayed "${item.title}" in toolbar (${item.type})`);
       } catch (error) {
         console.error(`bookspace: Error moving "${item.title}":`, error);
       }
     }
     
-    // Remove the now-empty bookspace folder
-    try {
-      await browser.bookmarks.remove(bookspaceFolder.id);
-      console.log('bookspace: Removed empty bookspace folder');
-    } catch (error) {
-      // Folder might not be empty, that's okay
-      console.log('bookspace: bookspace folder not removed (may not be empty)');
-    }
-    
     currentWorkspace = null;
-    console.log(`bookspace: Showing all ${count} bookmarks`);
+    console.log(`bookspace: Showing all ${count} items from bookspace (maintaining positions)`);
     isProcessing = false;
     return { success: true, count };
     
@@ -463,11 +482,6 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   
   if (message.action === 'switchWorkspace') {
     switchToWorkspace(message.workspaceName).then(sendResponse);
-    return true;
-  }
-  
-  if (message.action === 'showNoMatch') {
-    showNoMatch().then(sendResponse);
     return true;
   }
   
