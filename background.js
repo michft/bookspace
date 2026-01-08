@@ -147,9 +147,9 @@ async function switchToWorkspace(workspaceName) {
     return { success: false, message: 'No workspace name provided' };
   }
   
-  // Special case: "none" workspace shows all bookmarks in original layout
+  // Special case: "none" workspace shows only change bookmarks and bookspace folder
   if (workspaceName.toLowerCase() === 'none') {
-    return await showAllBookmarks();
+    return await showNoneWorkspace();
   }
   
   isProcessing = true;
@@ -259,6 +259,99 @@ async function switchToWorkspace(workspaceName) {
     
   } catch (error) {
     console.error('bookspace: Error switching workspace:', error);
+    isProcessing = false;
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Show "none" workspace - only change bookmarks and bookspace folder visible
+ */
+async function showNoneWorkspace() {
+  if (isProcessing) {
+    console.log('bookspace: Already processing, skipping...');
+    return { success: false, message: 'Already processing' };
+  }
+  
+  isProcessing = true;
+  
+  try {
+    const bookspaceFolder = await getOrCreateBookspaceFolder();
+    
+    // First, if there's a current workspace, move its bookmarks back into their folder
+    if (currentWorkspace && currentWorkspace.toLowerCase() !== 'none') {
+      if (currentWorkspace.toLowerCase() === 'none') {
+        // Already in none mode, nothing to do
+      } else {
+        const previousWorkspaceFolder = await findSubfolder(bookspaceFolder.id, currentWorkspace);
+        
+        if (previousWorkspaceFolder) {
+          const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
+          const itemsToMoveBack = toolbarChildren.filter(
+            item => item.id !== bookspaceFolder.id && 
+                    !(item.type === 'bookmark' && item.title === 'change bookmarks')
+          );
+          
+          for (const item of itemsToMoveBack) {
+            try {
+              await browser.bookmarks.move(item.id, {
+                parentId: previousWorkspaceFolder.id
+              });
+              console.log(`bookspace: Moved "${item.title}" back into "${currentWorkspace}" folder`);
+            } catch (error) {
+              console.error(`bookspace: Error moving "${item.title}" back:`, error);
+            }
+          }
+        }
+      }
+    } else {
+      // Move any loose items back into bookspace
+      const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
+      for (const item of toolbarChildren) {
+        if (item.id === bookspaceFolder.id) continue;
+        if (item.type === 'bookmark' && item.title === 'change bookmarks') continue;
+        
+        try {
+          await browser.bookmarks.move(item.id, {
+            parentId: bookspaceFolder.id
+          });
+          console.log(`bookspace: Moved "${item.title}" back into bookspace`);
+        } catch (error) {
+          console.error(`bookspace: Error moving "${item.title}" back:`, error);
+        }
+      }
+    }
+    
+    // Ensure bookspace folder is visible in toolbar (at index 1, after change bookmarks)
+    const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
+    const bookspaceInToolbar = toolbarChildren.find(item => item.id === bookspaceFolder.id);
+    
+    if (!bookspaceInToolbar) {
+      // Move bookspace folder to toolbar at index 1
+      await browser.bookmarks.move(bookspaceFolder.id, {
+        parentId: TOOLBAR_ID,
+        index: 1
+      });
+      console.log('bookspace: Moved bookspace folder to toolbar');
+    } else {
+      // Ensure it's at index 1
+      const currentIndex = toolbarChildren.findIndex(item => item.id === bookspaceFolder.id);
+      if (currentIndex !== 1) {
+        await browser.bookmarks.move(bookspaceFolder.id, {
+          index: 1
+        });
+      }
+    }
+    
+    currentWorkspace = 'none';
+    // Ensure "change bookmarks" stays first
+    await ensureChangeBookmarksFirst();
+    console.log('bookspace: Switched to "none" workspace - showing only change bookmarks and bookspace folder');
+    isProcessing = false;
+    return { success: true, count: 0, message: 'Showing change bookmarks and bookspace folder only' };
+    
+  } catch (error) {
+    console.error('bookspace: Error showing none workspace:', error);
     isProcessing = false;
     return { success: false, error: error.message };
   }
