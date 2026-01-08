@@ -1,0 +1,22 @@
+{
+  "name": "bookspace",
+  "version": "1.0.0",
+  "description": "A web extension for Zen Browser that loads bookmarks from a folder matching the workspace name",
+  "main": "background.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/bookspace.git"
+  },
+  "keywords": [
+    "zen-browser",
+    "workspace",
+    "bookmarks",
+    "webextension",
+    "firefox"
+  ],
+  "author": "",
+  "license": "MPL-2.0"
+}

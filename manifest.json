@@ -1,0 +1,25 @@
+{
+  "manifest_version": 2,
+  "name": "Bookspace",
+  "version": "1.0.0",
+  "description": "Load bookmarks from a folder matching the workspace name when a workspace is loaded",
+  "homepage_url": "https://github.com/yourusername/bookspace",
+  "icons": {
+    "48": "icons/bookspace-48.png",
+    "96": "icons/bookspace-96.png"
+  },
+  "permissions": [
+    "bookmarks",
+    "tabs",
+    "storage"
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "bookspace@example.com",
+      "strict_min_version": "109.0"
+    }
+  }
+}
