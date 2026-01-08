@@ -11,7 +11,8 @@
   "permissions": [
     "bookmarks",
     "tabs",
-    "storage"
+    "storage",
+    "contextualIdentities"
   ],
   "background": {
     "scripts": ["background.js"]

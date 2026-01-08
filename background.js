@@ -665,9 +665,110 @@ async function getEmptyFoldersInBookspace(bookspaceFolder) {
 }
 
 /**
- * Detect current workspace by examining toolbar and bookspace folder structure
+ * Get the container name for the active tab
+ * Returns the container name, or null for default container (no container)
+ */
+async function getActiveTabContainerName() {
+  try {
+    // Get the active tab in the current window
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    
+    if (!tabs || tabs.length === 0) {
+      console.log('bookspace: No active tab found');
+      return null;
+    }
+    
+    const currentTab = tabs[0];
+    
+    if (!currentTab || !currentTab.cookieStoreId) {
+      console.log('bookspace: Active tab has no cookieStoreId (default container)');
+      return null;
+    }
+    
+    // Get the container (contextual identity) details using the cookieStoreId
+    try {
+      const container = await browser.contextualIdentities.get(currentTab.cookieStoreId);
+      
+      if (container) {
+        console.log(`bookspace: Active tab is in container: "${container.name}"`);
+        return container.name;
+      } else {
+        console.log('bookspace: Container details not found (default context)');
+        return null;
+      }
+    } catch (error) {
+      // If get() fails, it might be the default container
+      if (error.message && error.message.includes('No matching identity')) {
+        console.log('bookspace: No matching identity (default container)');
+        return null;
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error(`bookspace: Error fetching container info: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Get all available containers
+ * Returns array of container names
+ */
+async function getAllContainers() {
+  try {
+    const containers = await browser.contextualIdentities.query({});
+    return containers.map(c => c.name);
+  } catch (error) {
+    console.error('bookspace: Error getting all containers:', error);
+    return [];
+  }
+}
+
+/**
+ * Detect current workspace by matching container name to bookspace folder
  */
 async function detectCurrentWorkspace() {
+  try {
+    // Get the bookspace folder first (required for all operations)
+    const bookspaceFolder = await findSubfolder(TOOLBAR_ID, BOOKSPACE_FOLDER_NAME);
+    
+    if (!bookspaceFolder) {
+      console.error('bookspace: Cannot detect workspace - bookspace folder not found');
+      return 'bookspace-error';
+    }
+    
+    // Get active tab's container name
+    const containerName = await getActiveTabContainerName();
+    
+    // If no container (default context), return bookspace-none
+    if (!containerName) {
+      console.info('bookspace: [DETECTION] No container (default context) - detected workspace: bookspace-none');
+      return 'bookspace-none';
+    }
+    
+    // Check if any containers exist (for error reporting)
+    const allContainers = await getAllContainers();
+    if (allContainers.length === 0) {
+      console.error('bookspace: [DETECTION] No containers available');
+      return 'bookspace-error';
+    }
+    
+    // Match container name to bookspace folder (case-insensitive)
+    const workspaceFolder = await findSubfolder(bookspaceFolder.id, containerName);
+    
+    if (workspaceFolder) {
+      console.info(`bookspace: [DETECTION] Detected workspace: "${containerName}" (matches container name)`);
+      return containerName;
+    } else {
+      // Container name doesn't match any bookspace folder - fallback to bookspace-none
+      console.info(`bookspace: [DETECTION] Container "${containerName}" has no matching bookspace folder - defaulting to bookspace-none`);
+      return 'bookspace-none';
+    }
+  } catch (error) {
+    console.error('bookspace: Error detecting workspace:', error);
+    return 'bookspace-error';
+  }
+}
   try {
     const bookspaceFolder = await findSubfolder(TOOLBAR_ID, BOOKSPACE_FOLDER_NAME);
     

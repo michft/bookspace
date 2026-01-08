@@ -227,13 +227,12 @@
   
   <div id="error-box" class="error-box">
     <strong>⚠️ Workspace Detection Error</strong>
-    <span id="error-message">Cannot determine current workspace state. Please check the browser console for details.</span>
+    <span id="error-message">Cannot determine current workspace state. This may be due to: (1) No containers available, (2) Container name does not match any bookspace folder, or (3) Bookspace folder not found. Ensure containers are created and attached to workspace tabs, and that container names match bookspace folder names. Check browser console for details.</span>
   </div>
   
   <div class="info">
     <strong>How it works:</strong><br>
-    Create folders inside bookspace matching your workspace names. 
-    Click a workspace to show only those bookmarks in the toolbar.
+    Create folders inside bookspace matching your workspace names. Attach Firefox containers to workspace tabs with names matching your bookspace folders. The extension automatically detects workspaces from container names. You can also manually switch workspaces by clicking workspace names.
   </div>
   
   <div class="debug">

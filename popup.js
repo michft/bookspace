@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (currentWorkspace === 'bookspace-error') {
         // Show error box
         errorBox.classList.add('show');
-        errorMessage.textContent = 'Cannot determine current workspace state. Indeterminate state detected. Check browser console for details.';
+        errorMessage.textContent = 'Cannot determine current workspace state. This may be due to: (1) No containers available, (2) Container name does not match any bookspace folder, or (3) Bookspace folder not found. Ensure containers are created and attached to workspace tabs, and that container names match bookspace folder names. Check browser console for details.';
         
         // Disable transition buttons
         bookspaceNoneBtn.disabled = true;
