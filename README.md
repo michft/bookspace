@@ -4,7 +4,8 @@ A web extension for Zen Browser that automatically loads bookmarks from a folder
 
 ## Features
 
-- Automatically detects workspace changes
+- Automatically detects workspace changes (via storage events and polling)
+- Manual bookmark loading via browser action popup
 - Finds bookmark folders matching the workspace name (case-insensitive)
 - Opens all bookmarks from the matching folder in new tabs
 - Recursively includes bookmarks from subfolders
@@ -28,10 +29,20 @@ When a workspace is loaded in Zen Browser, Bookspace:
 
 ## Usage
 
+### Automatic Mode
+
 1. Create bookmark folders in your bookmarks with names matching your workspace names
 2. Add bookmarks to those folders
 3. Switch between workspaces in Zen Browser
-4. Bookspace will automatically open the bookmarks from the matching folder
+4. Bookspace will automatically attempt to detect workspace changes and open the bookmarks from the matching folder
+
+### Manual Mode
+
+1. Click the Bookspace icon in the toolbar
+2. Enter the workspace name in the popup
+3. Click "Load Bookmarks" to open all bookmarks from the matching folder
+
+**Note:** Since Zen Browser's workspace API is not directly accessible from web extensions, automatic detection may not always work. Use the manual mode for reliable bookmark loading.
 
 ## Example
 
@@ -44,6 +55,8 @@ Since Zen Browser's workspace API is not directly accessible from web extensions
 - Storage events (if Zen Browser stores workspace info in `browser.storage`)
 - Polling (checks every 2 seconds for workspace changes)
 - Tab/window creation events as fallback indicators
+
+**For best results, use the manual mode via the browser action popup.**
 
 If Zen Browser exposes workspace information through a different mechanism, this extension can be updated to use that API.
 
