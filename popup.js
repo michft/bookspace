@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const messageDiv = document.getElementById('message');
   const currentWorkspaceDiv = document.getElementById('current-workspace');
   const workspaceListDiv = document.getElementById('workspace-list');
+  const debugContentDiv = document.getElementById('debug-content');
   
   function showMessage(text, isError = false) {
     messageDiv.textContent = text;
@@ -17,9 +18,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 3000);
   }
   
+  function updateDebugDisplay(state) {
+    if (!debugContentDiv) return;
+    
+    const formatValue = (value) => {
+      if (value === null || value === undefined) {
+        return '<span class="debug-value null">null</span>';
+      }
+      if (typeof value === 'boolean') {
+        return `<span class="debug-value ${value}">${value}</span>`;
+      }
+      if (typeof value === 'object' && Array.isArray(value)) {
+        return `<span class="debug-value">[${value.length}] ${JSON.stringify(value)}</span>`;
+      }
+      return `<span class="debug-value">${JSON.stringify(value)}</span>`;
+    };
+    
+    const debugItems = [
+      { key: 'isProcessing', value: state.isProcessing !== undefined ? state.isProcessing : 'N/A' },
+      { key: 'currentWorkspace', value: state.currentWorkspace },
+      { key: 'isOrganized', value: state.isOrganized !== undefined ? state.isOrganized : 'N/A' },
+      { key: 'workspaceFolders', value: state.workspaceFolders || [] },
+      { key: 'error', value: state.error || null }
+    ];
+    
+    debugContentDiv.innerHTML = debugItems.map(item => 
+      `<div class="debug-item">
+        <span class="debug-key">${item.key}:</span>
+        ${formatValue(item.value)}
+      </div>`
+    ).join('');
+  }
+  
   async function refreshState() {
     try {
       const state = await browser.runtime.sendMessage({ action: 'getState' });
+      
+      // Update debug display
+      updateDebugDisplay(state);
       
       // Update current workspace display
       const currentWorkspace = state.currentWorkspace || 'none';
@@ -56,6 +92,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       
     } catch (error) {
       console.error('Error getting state:', error);
+      updateDebugDisplay({ error: error.message });
     }
   }
   

@@ -462,7 +462,8 @@ async function getCurrentState() {
     return {
       isOrganized,
       currentWorkspace,
-      workspaceFolders
+      workspaceFolders,
+      isProcessing
     };
   } catch (error) {
     console.error('bookspace: Error getting current state:', error);
@@ -470,6 +471,7 @@ async function getCurrentState() {
       isOrganized: false,
       currentWorkspace: null,
       workspaceFolders: [],
+      isProcessing: false,
       error: error.message
     };
   }

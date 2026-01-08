@@ -149,6 +149,47 @@
     .info strong {
       color: #cdd6f4;
     }
+    .debug {
+      font-size: 10px;
+      color: #6c7086;
+      line-height: 1.4;
+      padding: 10px;
+      background: #181825;
+      border-radius: 6px;
+      margin-top: 12px;
+      font-family: 'Courier New', monospace;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .debug-header {
+      font-size: 11px;
+      color: #f38ba8;
+      font-weight: 600;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .debug-item {
+      margin: 2px 0;
+    }
+    .debug-key {
+      color: #89b4fa;
+      display: inline-block;
+      min-width: 140px;
+    }
+    .debug-value {
+      color: #a6e3a1;
+    }
+    .debug-value.true {
+      color: #a6e3a1;
+    }
+    .debug-value.false {
+      color: #f38ba8;
+    }
+    .debug-value.null {
+      color: #6c7086;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -170,6 +211,11 @@
     <strong>How it works:</strong><br>
     Create folders inside bookspace matching your workspace names. 
     Click a workspace to show only those bookmarks in the toolbar.
+  </div>
+  
+  <div class="debug">
+    <div class="debug-header">🔍 Debug State</div>
+    <div id="debug-content"></div>
   </div>
   
   <script src="popup.js"></script>
