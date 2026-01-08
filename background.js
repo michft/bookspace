@@ -135,6 +135,7 @@ async function organizeBookmarksIntoBookspace() {
  * Display bookmarks from a specific workspace folder
  * Moves bookmarks from bookspace/{workspaceName} to toolbar root
  * and moves previous workspace's bookmarks back into their folder
+ * Special case: "none" workspace shows all bookmarks in original layout
  */
 async function switchToWorkspace(workspaceName) {
   if (isProcessing) {
@@ -146,6 +147,11 @@ async function switchToWorkspace(workspaceName) {
     return { success: false, message: 'No workspace name provided' };
   }
   
+  // Special case: "none" workspace shows all bookmarks in original layout
+  if (workspaceName.toLowerCase() === 'none') {
+    return await showAllBookmarks();
+  }
+  
   isProcessing = true;
   
   try {
@@ -153,25 +159,44 @@ async function switchToWorkspace(workspaceName) {
     
     // First, if there's a current workspace, move its bookmarks back into their folder
     if (currentWorkspace && currentWorkspace !== workspaceName) {
-      const previousWorkspaceFolder = await findSubfolder(bookspaceFolder.id, currentWorkspace);
-      
-      if (previousWorkspaceFolder) {
-        // Get all items currently in toolbar (except bookspace folder and change bookmarks)
+      // If previous workspace was "none", we need to move items back differently
+      if (currentWorkspace.toLowerCase() === 'none') {
+        // Move all toolbar items (except bookspace and change bookmarks) back into bookspace
         const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
-        const itemsToMoveBack = toolbarChildren.filter(
-          item => item.id !== bookspaceFolder.id && 
-                  !(item.type === 'bookmark' && item.title === 'change bookmarks')
-        );
-        
-        // Move them back into the previous workspace folder
-        for (const item of itemsToMoveBack) {
+        for (const item of toolbarChildren) {
+          if (item.id === bookspaceFolder.id) continue;
+          if (item.type === 'bookmark' && item.title === 'change bookmarks') continue;
+          
           try {
             await browser.bookmarks.move(item.id, {
-              parentId: previousWorkspaceFolder.id
+              parentId: bookspaceFolder.id
             });
-            console.log(`bookspace: Moved "${item.title}" back into "${currentWorkspace}" folder`);
+            console.log(`bookspace: Moved "${item.title}" back into bookspace`);
           } catch (error) {
             console.error(`bookspace: Error moving "${item.title}" back:`, error);
+          }
+        }
+      } else {
+        const previousWorkspaceFolder = await findSubfolder(bookspaceFolder.id, currentWorkspace);
+        
+        if (previousWorkspaceFolder) {
+          // Get all items currently in toolbar (except bookspace folder and change bookmarks)
+          const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
+          const itemsToMoveBack = toolbarChildren.filter(
+            item => item.id !== bookspaceFolder.id && 
+                    !(item.type === 'bookmark' && item.title === 'change bookmarks')
+          );
+          
+          // Move them back into the previous workspace folder
+          for (const item of itemsToMoveBack) {
+            try {
+              await browser.bookmarks.move(item.id, {
+                parentId: previousWorkspaceFolder.id
+              });
+              console.log(`bookspace: Moved "${item.title}" back into "${currentWorkspace}" folder`);
+            } catch (error) {
+              console.error(`bookspace: Error moving "${item.title}" back:`, error);
+            }
           }
         }
       }
