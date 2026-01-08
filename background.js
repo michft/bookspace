@@ -57,13 +57,13 @@ async function getOrCreateBookspaceFolder() {
     return existingFolder;
   }
   
-  // Create bookspace folder after "change bookmarks" (at index 1)
+  // Create bookspace folder after "change bookmarks test" (at index 1)
   console.log('bookspace: Creating bookspace folder');
   const newFolder = await browser.bookmarks.create({
     parentId: TOOLBAR_ID,
     title: BOOKSPACE_FOLDER_NAME,
     type: 'folder',
-    index: 1 // After "change bookmarks" (index 0)
+    index: 1 // After "change bookmarks test" (index 0)
   });
   
   return newFolder;
@@ -151,13 +151,13 @@ async function organizeBookmarksIntoBookspace() {
     
     let movedCount = 0;
     
-    // Move all items except the bookspace folder itself and the "change bookmarks" bookmark
+    // Move all items except the bookspace folder itself and the "change bookmarks test" bookmark
     for (const item of toolbarChildren) {
       if (item.id === bookspaceFolder.id) {
         continue; // Skip the bookspace folder itself
       }
-      if (item.type === 'bookmark' && item.title === 'change bookmarks') {
-        continue; // Skip the change bookmarks bookmark
+      if (item.type === 'bookmark' && item.title === 'change bookmarks test') {
+        continue; // Skip the change bookmarks test bookmark
       }
       
       try {
@@ -171,7 +171,7 @@ async function organizeBookmarksIntoBookspace() {
       }
     }
     
-    // Ensure "change bookmarks" stays first
+    // Ensure "change bookmarks test" stays first
     await ensureChangeBookmarksFirst();
     console.log(`bookspace: Organized ${movedCount} items into bookspace folder`);
     isProcessing = false;
@@ -205,7 +205,7 @@ async function switchToWorkspace(workspaceName) {
   logTransitionStart('switchToWorkspace', workspaceName);
   console.info(`bookspace: [SUMMARY] Transition start: switchToWorkspace from "${previousWorkspace || 'null'}" to "${workspaceName}"`);
   
-  // Special case: "none" workspace shows only change bookmarks and bookspace folder
+  // Special case: "none" workspace shows only change bookmarks test and bookspace folder
   // Normalize "bookspace-none" to "none"
   if (workspaceName.toLowerCase() === 'none' || workspaceName.toLowerCase() === 'bookspace-none') {
     logTransitionPath('bookspace-none');
@@ -233,11 +233,11 @@ async function switchToWorkspace(workspaceName) {
     if (currentWorkspace && currentWorkspace !== workspaceName) {
       // If previous workspace was "bookspace-none", we need to move items back differently
       if (currentWorkspace.toLowerCase() === 'bookspace-none') {
-        // Move all toolbar items (except bookspace and change bookmarks) back into bookspace
+        // Move all toolbar items (except bookspace and change bookmarks test) back into bookspace
         const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
         const itemsToMove = toolbarChildren.filter(
           item => item.id !== bookspaceFolder.id && 
-                  !(item.type === 'bookmark' && item.title === 'change bookmarks')
+                  !(item.type === 'bookmark' && item.title === 'change bookmarks test')
         );
         
         for (const item of itemsToMove) {
@@ -257,11 +257,11 @@ async function switchToWorkspace(workspaceName) {
         const previousWorkspaceFolder = await findSubfolder(bookspaceFolder.id, currentWorkspace);
         
         if (previousWorkspaceFolder) {
-          // Get all items currently in toolbar (except bookspace folder and change bookmarks)
+          // Get all items currently in toolbar (except bookspace folder and change bookmarks test)
           const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
           const itemsToMoveBack = toolbarChildren.filter(
             item => item.id !== bookspaceFolder.id && 
-                    !(item.type === 'bookmark' && item.title === 'change bookmarks')
+                    !(item.type === 'bookmark' && item.title === 'change bookmarks test')
           );
           
           // Move them back into the previous workspace folder
@@ -286,7 +286,7 @@ async function switchToWorkspace(workspaceName) {
       const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
       const itemsToMove = toolbarChildren.filter(
         item => item.id !== bookspaceFolder.id && 
-                !(item.type === 'bookmark' && item.title === 'change bookmarks')
+                !(item.type === 'bookmark' && item.title === 'change bookmarks test')
       );
       
       for (const item of itemsToMove) {
@@ -328,7 +328,7 @@ async function switchToWorkspace(workspaceName) {
     // Move all items from new workspace folder to toolbar root
     // Note: When moving folders, all nested subfolders and their contents are automatically
     // preserved - the browser bookmarks API maintains the entire folder structure
-    // Start at index 1 (after "change bookmarks" which is at index 0)
+    // Start at index 1 (after "change bookmarks test" which is at index 0)
     const workspaceChildren = await getFolderChildren(workspaceFolder.id);
     let displayedCount = 0;
     
@@ -336,7 +336,7 @@ async function switchToWorkspace(workspaceName) {
       try {
         await browser.bookmarks.move(item.id, {
           parentId: TOOLBAR_ID,
-          index: displayedCount + 1 // Place after "change bookmarks" (index 0)
+          index: displayedCount + 1 // Place after "change bookmarks test" (index 0)
         });
         displayedCount++;
       } catch (error) {
@@ -349,7 +349,7 @@ async function switchToWorkspace(workspaceName) {
     console.info(`bookspace: [SUMMARY] Displayed ${displayedCount} items from workspace "${workspaceName}"`);
     
     currentWorkspace = workspaceName;
-    // Ensure "change bookmarks" stays first
+    // Ensure "change bookmarks test" stays first
     await ensureChangeBookmarksFirst();
     logTransitionUpdate(previousWorkspace, workspaceName);
     logTransitionEnd(true, displayedCount);
@@ -367,7 +367,7 @@ async function switchToWorkspace(workspaceName) {
 }
 
 /**
- * Show no bookmarks - all bookmarks are in the bookspace folder, only change bookmarks and bookspace folder visible
+ * Show no bookmarks - all bookmarks are in the bookspace folder, only change bookmarks test and bookspace folder visible
  */
 async function showNoBookmarks() {
   const previousWorkspace = currentWorkspace;
@@ -401,11 +401,11 @@ async function showNoBookmarks() {
       if (currentWorkspace.toLowerCase() === 'bookspace-all') {
         logTransitionPath('from bookspace-all');
         
-        // Get all items currently in toolbar (except bookspace folder and change bookmarks)
+        // Get all items currently in toolbar (except bookspace folder and change bookmarks test)
         const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
         const itemsToMove = toolbarChildren.filter(
           item => item.id !== bookspaceFolder.id && 
-                  !(item.type === 'bookmark' && item.title === 'change bookmarks')
+                  !(item.type === 'bookmark' && item.title === 'change bookmarks test')
         );
         
         // Move all items from toolbar root to bookspace folder
@@ -430,11 +430,11 @@ async function showNoBookmarks() {
         const previousWorkspaceFolder = await findSubfolder(bookspaceFolder.id, currentWorkspace);
         
         if (previousWorkspaceFolder) {
-          // Get all items currently in toolbar (except bookspace folder and change bookmarks)
+          // Get all items currently in toolbar (except bookspace folder and change bookmarks test)
           const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
           const itemsToMoveBack = toolbarChildren.filter(
             item => item.id !== bookspaceFolder.id && 
-                    !(item.type === 'bookmark' && item.title === 'change bookmarks')
+                    !(item.type === 'bookmark' && item.title === 'change bookmarks test')
           );
           
           // Move them back into the previous workspace folder
@@ -456,7 +456,7 @@ async function showNoBookmarks() {
       }
     }
     
-    // Ensure bookspace folder is visible in toolbar (at index 1, after change bookmarks)
+    // Ensure bookspace folder is visible in toolbar (at index 1, after change bookmarks test)
     const toolbarChildrenAfter = await getFolderChildren(TOOLBAR_ID);
     const bookspaceInToolbar = toolbarChildrenAfter.find(item => item.id === bookspaceFolder.id);
     
@@ -479,7 +479,7 @@ async function showNoBookmarks() {
     
     // Update the workspace state to bookspace-none
     currentWorkspace = 'bookspace-none';
-    // Ensure "change bookmarks" stays first
+    // Ensure "change bookmarks test" stays first
     await ensureChangeBookmarksFirst();
     
     const toolbarCountAfter = await countItemsInFolder(TOOLBAR_ID, false);
@@ -487,7 +487,7 @@ async function showNoBookmarks() {
     logTransitionEnd(true, 0);
     console.info(`bookspace: [SUMMARY] Transition complete: 0 items displayed, success=true, workspace="${workspaceName}"`);
     isProcessing = false;
-    return { success: true, count: 0, message: 'Showing change bookmarks and bookspace folder only' };
+    return { success: true, count: 0, message: 'Showing change bookmarks test and bookspace folder only' };
     
   } catch (error) {
     console.error('bookspace: Error showing none workspace:', error);
@@ -535,7 +535,7 @@ async function showAllBookmarks() {
         const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
         const itemsToMoveBack = toolbarChildren.filter(
           item => item.id !== bookspaceFolder.id && 
-                  !(item.type === 'bookmark' && item.title === 'change bookmarks')
+                  !(item.type === 'bookmark' && item.title === 'change bookmarks test')
         );
         
         // Note: Nested subfolders are automatically preserved when moving folders
@@ -560,7 +560,7 @@ async function showAllBookmarks() {
       const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
       const itemsToMove = toolbarChildren.filter(
         item => item.id !== bookspaceFolder.id && 
-                !(item.type === 'bookmark' && item.title === 'change bookmarks')
+                !(item.type === 'bookmark' && item.title === 'change bookmarks test')
       );
       
       for (const item of itemsToMove) {
@@ -583,7 +583,7 @@ async function showAllBookmarks() {
     // Now move all bookspace children to toolbar, maintaining their relative positions
     // Note: When moving folders, all nested subfolders and their contents are automatically
     // preserved - the browser bookmarks API maintains the entire folder structure
-    // Start at index 1 (after "change bookmarks" which is at index 0)
+    // Start at index 1 (after "change bookmarks test" which is at index 0)
     const bookspaceChildren = await getFolderChildren(bookspaceFolder.id);
     let count = 0;
     
@@ -591,7 +591,7 @@ async function showAllBookmarks() {
       try {
         await browser.bookmarks.move(item.id, {
           parentId: TOOLBAR_ID,
-          index: count + 1 // Place after "change bookmarks" (index 0)
+          index: count + 1 // Place after "change bookmarks test" (index 0)
         });
         count++;
       } catch (error) {
@@ -604,7 +604,7 @@ async function showAllBookmarks() {
     console.info(`bookspace: [SUMMARY] Displayed ${count} items from bookspace to toolbar`);
     
     currentWorkspace = 'bookspace-all';
-    // Ensure "change bookmarks" stays first
+    // Ensure "change bookmarks test" stays first
     await ensureChangeBookmarksFirst();
     logTransitionUpdate(previousWorkspace, workspaceName);
     logTransitionEnd(true, count);
@@ -622,13 +622,13 @@ async function showAllBookmarks() {
 }
 
 /**
- * Get toolbar items (excluding change bookmarks and bookspace folder)
+ * Get toolbar items (excluding change bookmarks test and bookspace folder)
  */
 async function getToolbarItems(bookspaceFolder) {
   const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
   return toolbarChildren.filter(
     item => item.id !== bookspaceFolder?.id && 
-            !(item.type === 'bookmark' && item.title === 'change bookmarks')
+            !(item.type === 'bookmark' && item.title === 'change bookmarks test')
   );
 }
 
@@ -853,11 +853,11 @@ async function getCurrentState() {
     // If in bookspace-all mode, workspace folders are at toolbar root level
     if (detectedWorkspace && detectedWorkspace.toLowerCase() === 'bookspace-all') {
       const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
-      // Get all folders from toolbar root (excluding bookspace folder and change bookmarks)
+      // Get all folders from toolbar root (excluding bookspace folder and change bookmarks test)
       workspaceFolders = toolbarChildren
         .filter(c => c.type === 'folder' && 
                      c.id !== bookspaceFolder?.id &&
-                     !(c.type === 'bookmark' && c.title === 'change bookmarks'))
+                     !(c.type === 'bookmark' && c.title === 'change bookmarks test'))
         .map(c => c.title);
     } else if (bookspaceFolder) {
       // Otherwise, workspace folders are top-level folders inside the bookspace folder
@@ -887,13 +887,13 @@ async function getCurrentState() {
 }
 
 /**
- * Ensure "change bookmarks" bookmark is at index 0
+ * Ensure "change bookmarks test" bookmark is at index 0
  */
 async function ensureChangeBookmarksFirst() {
   try {
     const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
     const changeBookmarks = toolbarChildren.find(
-      child => child.type === 'bookmark' && child.title === 'change bookmarks'
+      child => child.type === 'bookmark' && child.title === 'change bookmarks test'
     );
     
     if (changeBookmarks) {
@@ -903,16 +903,16 @@ async function ensureChangeBookmarksFirst() {
         await browser.bookmarks.move(changeBookmarks.id, {
           index: 0
         });
-        console.log('bookspace: Moved "change bookmarks" to position 0');
+        console.log('bookspace: Moved "change bookmarks test" to position 0');
       }
     }
   } catch (error) {
-    console.error('bookspace: Error ensuring change bookmarks is first:', error);
+    console.error('bookspace: Error ensuring change bookmarks test is first:', error);
   }
 }
 
 /**
- * Create or update the "change bookmarks" bookmark that links to popup.html
+ * Create or update the "change bookmarks test" bookmark that links to popup.html
  * Always places it at index 0 (first position)
  */
 async function createChangeBookmarksBookmark() {
@@ -920,10 +920,10 @@ async function createChangeBookmarksBookmark() {
     const popupUrl = browser.runtime.getURL('popup.html');
     const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
     
-    // Look for existing "change bookmarks" bookmark
+    // Look for existing "change bookmarks test" bookmark
     const existingBookmark = toolbarChildren.find(
       child => child.type === 'bookmark' && 
-               child.title === 'change bookmarks'
+               child.title === 'change bookmarks test'
     );
     
     if (existingBookmark) {
@@ -932,7 +932,7 @@ async function createChangeBookmarksBookmark() {
         await browser.bookmarks.update(existingBookmark.id, {
           url: popupUrl
         });
-        console.log('bookspace: Updated "change bookmarks" bookmark URL');
+        console.log('bookspace: Updated "change bookmarks test" bookmark URL');
       }
       // Ensure it's at index 0
       await ensureChangeBookmarksFirst();
@@ -942,16 +942,16 @@ async function createChangeBookmarksBookmark() {
     // Create new bookmark at index 0
     const bookmark = await browser.bookmarks.create({
       parentId: TOOLBAR_ID,
-      title: 'change bookmarks',
+      title: 'change bookmarks test',
       url: popupUrl,
       index: 0
     });
     
-    console.log('bookspace: Created "change bookmarks" bookmark at position 0');
+    console.log('bookspace: Created "change bookmarks test" bookmark at position 0');
     return bookmark;
     
   } catch (error) {
-    console.error('bookspace: Error creating change bookmarks bookmark:', error);
+    console.error('bookspace: Error creating change bookmarks test bookmark:', error);
   }
 }
 
@@ -969,7 +969,7 @@ browser.runtime.onStartup.addListener(async () => {
   if (!state.isOrganized) {
     await organizeBookmarksIntoBookspace();
   }
-  // Ensure the change bookmarks bookmark exists
+  // Ensure the change bookmarks test bookmark exists
   await createChangeBookmarksBookmark();
 });
 
