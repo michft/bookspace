@@ -97,10 +97,13 @@ async function organizeBookmarksIntoBookspace() {
     
     let movedCount = 0;
     
-    // Move all items except the bookspace folder itself
+    // Move all items except the bookspace folder itself and the "change bookmarks" bookmark
     for (const item of toolbarChildren) {
       if (item.id === bookspaceFolder.id) {
         continue; // Skip the bookspace folder itself
+      }
+      if (item.type === 'bookmark' && item.title === 'change bookmarks') {
+        continue; // Skip the change bookmarks bookmark
       }
       
       try {
@@ -145,10 +148,11 @@ async function switchToWorkspace(workspaceName) {
   try {
     const bookspaceFolder = await getOrCreateBookspaceFolder();
     
-    // First, move any loose items in toolbar (except bookspace folder) back into bookspace
+    // First, move any loose items in toolbar (except bookspace folder and change bookmarks) back into bookspace
     const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
     for (const item of toolbarChildren) {
       if (item.id === bookspaceFolder.id) continue;
+      if (item.type === 'bookmark' && item.title === 'change bookmarks') continue;
       
       // Move back into bookspace folder
       try {
@@ -218,10 +222,11 @@ async function showAllBookmarks() {
   try {
     const bookspaceFolder = await getOrCreateBookspaceFolder();
     
-    // First, move any loose items in toolbar back into bookspace
+    // First, move any loose items in toolbar back into bookspace (except change bookmarks)
     const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
     for (const item of toolbarChildren) {
       if (item.id === bookspaceFolder.id) continue;
+      if (item.type === 'bookmark' && item.title === 'change bookmarks') continue;
       
       await browser.bookmarks.move(item.id, {
         parentId: bookspaceFolder.id
@@ -297,10 +302,51 @@ async function getCurrentState() {
   }
 }
 
+/**
+ * Create or update the "change bookmarks" bookmark that links to popup.html
+ */
+async function createChangeBookmarksBookmark() {
+  try {
+    const popupUrl = browser.runtime.getURL('popup.html');
+    const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
+    
+    // Look for existing "change bookmarks" bookmark
+    const existingBookmark = toolbarChildren.find(
+      child => child.type === 'bookmark' && 
+               child.title === 'change bookmarks'
+    );
+    
+    if (existingBookmark) {
+      // Update the URL in case extension ID changed
+      if (existingBookmark.url !== popupUrl) {
+        await browser.bookmarks.update(existingBookmark.id, {
+          url: popupUrl
+        });
+        console.log('bookspace: Updated "change bookmarks" bookmark URL');
+      }
+      return existingBookmark;
+    }
+    
+    // Create new bookmark
+    const bookmark = await browser.bookmarks.create({
+      parentId: TOOLBAR_ID,
+      title: 'change bookmarks',
+      url: popupUrl
+    });
+    
+    console.log('bookspace: Created "change bookmarks" bookmark');
+    return bookmark;
+    
+  } catch (error) {
+    console.error('bookspace: Error creating change bookmarks bookmark:', error);
+  }
+}
+
 // Initialize on extension load
 browser.runtime.onInstalled.addListener(async () => {
   console.log('bookspace: Extension installed, organizing bookmarks...');
   await organizeBookmarksIntoBookspace();
+  await createChangeBookmarksBookmark();
 });
 
 browser.runtime.onStartup.addListener(async () => {
@@ -310,6 +356,8 @@ browser.runtime.onStartup.addListener(async () => {
   if (!state.isOrganized) {
     await organizeBookmarksIntoBookspace();
   }
+  // Ensure the change bookmarks bookmark exists
+  await createChangeBookmarksBookmark();
 });
 
 // Listen for messages from popup
