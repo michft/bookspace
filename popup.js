@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 3000);
   }
   
+  const updateButton = document.getElementById('update-bookmarks');
+  
   loadButton.addEventListener('click', async () => {
     const workspaceName = workspaceInput.value.trim();
     
@@ -57,6 +59,42 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       loadButton.disabled = false;
       loadButton.textContent = 'Load Bookmarks';
+    }
+  });
+  
+  updateButton.addEventListener('click', async () => {
+    const workspaceName = workspaceInput.value.trim();
+    
+    if (!workspaceName) {
+      showStatus('Please enter a workspace name', true);
+      return;
+    }
+    
+    updateButton.disabled = true;
+    updateButton.textContent = 'Updating...';
+    
+    try {
+      // Send message to background script to update bookmarks
+      const response = await browser.runtime.sendMessage({
+        action: 'updateBookmarks',
+        workspaceName: workspaceName
+      });
+      
+      if (response.success) {
+        if (response.added !== undefined) {
+          showStatus(`Updated folder "${workspaceName}": ${response.count} bookmarks (added ${response.added} new)`);
+        } else {
+          showStatus(`Updated folder "${workspaceName}" with ${response.count} bookmark(s)`);
+        }
+      } else {
+        showStatus(response.error || 'Failed to update bookmarks', true);
+      }
+    } catch (error) {
+      console.error('Error updating bookmarks:', error);
+      showStatus('Error: ' + error.message, true);
+    } finally {
+      updateButton.disabled = false;
+      updateButton.textContent = 'Update Bookmarks Folder';
     }
   });
   

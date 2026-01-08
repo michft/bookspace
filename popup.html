@@ -43,6 +43,15 @@
       cursor: pointer;
       margin-top: 10px;
     }
+    button:first-of-type {
+      margin-top: 0;
+    }
+    #update-bookmarks {
+      background: #28a745;
+    }
+    #update-bookmarks:hover {
+      background: #218838;
+    }
     button:hover {
       background: #357ABD;
     }
@@ -84,9 +93,11 @@
     <input type="text" id="workspace-name" placeholder="Enter workspace name">
   </div>
   <button id="load-bookmarks">Load Bookmarks</button>
+  <button id="update-bookmarks">Update Bookmarks Folder</button>
   <div id="status" class="status"></div>
   <div class="info">
-    Enter the name of a workspace to load bookmarks from a folder with the same name.
+    <strong>Load Bookmarks:</strong> Opens all bookmarks from the folder matching the workspace name.<br><br>
+    <strong>Update Bookmarks Folder:</strong> Syncs the folder with currently open tabs (adds new, removes closed).
   </div>
   <script src="popup.js"></script>
 </body>

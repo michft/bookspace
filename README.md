@@ -1,22 +1,25 @@
 # Bookspace
 
-A web extension for Zen Browser that automatically loads bookmarks from a folder matching the workspace name when a workspace is loaded.
+A web extension for Zen Browser that automatically updates bookmarks in a folder matching the workspace name when a workspace is loaded. The bookmark folder is synced with the currently open tabs in the workspace.
 
 ## Features
 
-- Automatically detects workspace changes (via storage events and polling)
-- Manual bookmark loading via browser action popup
-- Finds bookmark folders matching the workspace name (case-insensitive)
-- Opens all bookmarks from the matching folder in new tabs
-- Recursively includes bookmarks from subfolders
+- **Automatic bookmark folder sync**: When a workspace changes, the bookmark folder matching the workspace name is updated to reflect currently open tabs
+- **Automatic workspace detection**: Monitors for workspace changes via storage events and polling
+- **Manual controls**: Browser action popup for manual bookmark loading and folder updates
+- **Smart folder management**: Creates bookmark folders automatically if they don't exist
+- **Bookmark synchronization**: Adds new tabs as bookmarks, removes closed tabs, and updates titles
 
 ## How It Works
 
 When a workspace is loaded in Zen Browser, Bookspace:
 
 1. Detects the workspace change (via storage events or polling)
-2. Searches for a bookmark folder with a name matching the workspace name
-3. Opens all bookmarks from that folder (and subfolders) in new tabs
+2. Finds or creates a bookmark folder with a name matching the workspace name
+3. Updates the folder to match currently open tabs:
+   - Adds bookmarks for new tabs
+   - Removes bookmarks for closed tabs
+   - Updates bookmark titles if they changed
 
 ## Installation
 
@@ -40,13 +43,22 @@ When a workspace is loaded in Zen Browser, Bookspace:
 
 1. Click the Bookspace icon in the toolbar
 2. Enter the workspace name in the popup
-3. Click "Load Bookmarks" to open all bookmarks from the matching folder
+3. Choose an action:
+   - **Load Bookmarks**: Opens all bookmarks from the folder matching the workspace name in new tabs
+   - **Update Bookmarks Folder**: Syncs the folder with currently open tabs (adds new, removes closed, updates titles)
 
-**Note:** Since Zen Browser's workspace API is not directly accessible from web extensions, automatic detection may not always work. Use the manual mode for reliable bookmark loading.
+**Note:** Since Zen Browser's workspace API is not directly accessible from web extensions, automatic detection may not always work. Use the manual mode for reliable operation.
 
 ## Example
 
-If you have a workspace named "Development", create a bookmark folder also named "Development" and add your development-related bookmarks to it. When you switch to the "Development" workspace, Bookspace will automatically open all bookmarks from that folder.
+If you have a workspace named "Development":
+
+1. Switch to the "Development" workspace
+2. Open the tabs you want to bookmark
+3. Bookspace will automatically create a "Development" bookmark folder (if it doesn't exist) and update it with your current tabs
+4. When you switch back to "Development" later, you can use "Load Bookmarks" to reopen all those tabs
+
+Alternatively, you can manually create a "Development" bookmark folder and add bookmarks to it. When you switch to the workspace, Bookspace will sync the folder with your current tabs.
 
 ## Limitations
 
