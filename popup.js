@@ -31,11 +31,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         if (state.isOrganized) {
           // Check if we're in "no-match" mode (workspace folders visible)
-          const toolbarChildren = await browser.bookmarks.getChildren('toolbar_____');
-          const hasWorkspaceFolders = toolbarChildren.some(
-            item => item.type === 'folder' && item.title !== 'bookspace'
-          );
-          currentWorkspaceDiv.textContent = hasWorkspaceFolders ? 'Original layout' : 'None selected';
+          try {
+            const toolbarChildren = await browser.bookmarks.getChildren('toolbar_____');
+            const hasWorkspaceFolders = toolbarChildren.some(
+              item => item.type === 'folder' && item.title !== 'bookspace'
+            );
+            currentWorkspaceDiv.textContent = hasWorkspaceFolders ? 'Original layout' : 'None selected';
+          } catch (error) {
+            currentWorkspaceDiv.textContent = 'None selected';
+          }
         } else {
           currentWorkspaceDiv.textContent = 'Not organized';
         }
