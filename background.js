@@ -114,23 +114,23 @@ async function countItemsInFolder(folderId, includeSubfolders = true) {
  * Transition logging helpers
  */
 function logTransitionStart(functionName, workspaceName) {
-  console.log(`bookspace: [TRANSITION START] ${functionName} -> ${workspaceName}`);
+  console.debug(`bookspace: [TRANSITION START] ${functionName} -> ${workspaceName}`);
 }
 
 function logTransitionPath(pathName) {
-  console.log(`bookspace: [TRANSITION PATH] ${pathName}`);
+  console.debug(`bookspace: [TRANSITION PATH] ${pathName}`);
 }
 
 function logTransitionMove(count, source, destination) {
-  console.log(`bookspace: [TRANSITION MOVE] ${count} items: ${source} -> ${destination}`);
+  console.debug(`bookspace: [TRANSITION MOVE] ${count} items: ${source} -> ${destination}`);
 }
 
 function logTransitionUpdate(previousWorkspace, currentWorkspace) {
-  console.log(`bookspace: [TRANSITION UPDATE] ${previousWorkspace || 'null'} -> ${currentWorkspace}`);
+  console.debug(`bookspace: [TRANSITION UPDATE] ${previousWorkspace || 'null'} -> ${currentWorkspace}`);
 }
 
 function logTransitionEnd(success, count) {
-  console.log(`bookspace: [TRANSITION END] success=${success} count=${count}`);
+  console.debug(`bookspace: [TRANSITION END] success=${success} count=${count}`);
 }
 
 /**
@@ -203,6 +203,7 @@ async function switchToWorkspace(workspaceName) {
   }
   
   logTransitionStart('switchToWorkspace', workspaceName);
+  console.info(`bookspace: [SUMMARY] Transition start: switchToWorkspace from "${previousWorkspace || 'null'}" to "${workspaceName}"`);
   
   // Special case: "none" workspace shows only change bookmarks and bookspace folder
   // Normalize "bookspace-none" to "none"
@@ -251,6 +252,7 @@ async function switchToWorkspace(workspaceName) {
         
         const bookspaceCountAfter = await countItemsInFolder(bookspaceFolder.id, true);
         logTransitionMove(itemsToMove.length, 'toolbar', 'bookspace');
+        console.info(`bookspace: [SUMMARY] Moved back ${itemsToMove.length} items to bookspace`);
       } else {
         const previousWorkspaceFolder = await findSubfolder(bookspaceFolder.id, currentWorkspace);
         
@@ -276,6 +278,7 @@ async function switchToWorkspace(workspaceName) {
           
           const workspaceCountAfter = await countItemsInFolder(previousWorkspaceFolder.id, true);
           logTransitionMove(itemsToMoveBack.length, 'toolbar', `workspace:${currentWorkspace}`);
+          console.info(`bookspace: [SUMMARY] Moved back ${itemsToMoveBack.length} items to workspace "${currentWorkspace}"`);
         }
       }
     } else {
@@ -299,6 +302,7 @@ async function switchToWorkspace(workspaceName) {
       if (itemsToMove.length > 0) {
         const bookspaceCountAfter = await countItemsInFolder(bookspaceFolder.id, true);
         logTransitionMove(itemsToMove.length, 'toolbar', 'bookspace');
+        console.info(`bookspace: [SUMMARY] Moved back ${itemsToMove.length} items to bookspace`);
       }
     }
     
@@ -309,6 +313,7 @@ async function switchToWorkspace(workspaceName) {
       currentWorkspace = workspaceName;
       logTransitionUpdate(previousWorkspace, workspaceName);
       logTransitionEnd(true, 0);
+      console.info(`bookspace: [SUMMARY] Transition complete: 0 items moved, success=true, workspace="${workspaceName}"`);
       isProcessing = false;
       return { 
         success: true, 
@@ -341,18 +346,21 @@ async function switchToWorkspace(workspaceName) {
     
     const toolbarCountAfter = await countItemsInFolder(TOOLBAR_ID, false);
     logTransitionMove(displayedCount, `workspace:${workspaceName}`, 'toolbar');
+    console.info(`bookspace: [SUMMARY] Displayed ${displayedCount} items from workspace "${workspaceName}"`);
     
     currentWorkspace = workspaceName;
     // Ensure "change bookmarks" stays first
     await ensureChangeBookmarksFirst();
     logTransitionUpdate(previousWorkspace, workspaceName);
     logTransitionEnd(true, displayedCount);
+    console.info(`bookspace: [SUMMARY] Transition complete: ${displayedCount} items displayed, success=true, workspace="${workspaceName}"`);
     isProcessing = false;
     return { success: true, count: displayedCount };
     
   } catch (error) {
     console.error('bookspace: Error switching workspace:', error);
     logTransitionEnd(false, 0);
+    console.info(`bookspace: [SUMMARY] Transition failed: success=false, error="${error.message}"`);
     isProcessing = false;
     return { success: false, error: error.message };
   }
@@ -378,6 +386,7 @@ async function showNoBookmarks() {
   }
   
   logTransitionStart('showNoBookmarks', workspaceName);
+  console.info(`bookspace: [SUMMARY] Transition start: showNoBookmarks from "${previousWorkspace || 'null'}" to "${workspaceName}"`);
   isProcessing = true;
   
   try {
@@ -413,6 +422,7 @@ async function showNoBookmarks() {
         
         const bookspaceCountAfter = await countItemsInFolder(bookspaceFolder.id, true);
         logTransitionMove(itemsToMove.length, 'toolbar', 'bookspace');
+        console.info(`bookspace: [SUMMARY] Moved ${itemsToMove.length} items from toolbar to bookspace`);
       } else {
         logTransitionPath('from regular workspace');
         
@@ -441,6 +451,7 @@ async function showNoBookmarks() {
           
           const workspaceCountAfter = await countItemsInFolder(previousWorkspaceFolder.id, true);
           logTransitionMove(itemsToMoveBack.length, 'toolbar', `workspace:${currentWorkspace}`);
+          console.info(`bookspace: [SUMMARY] Moved ${itemsToMoveBack.length} items to workspace "${currentWorkspace}"`);
         }
       }
     }
@@ -474,12 +485,14 @@ async function showNoBookmarks() {
     const toolbarCountAfter = await countItemsInFolder(TOOLBAR_ID, false);
     logTransitionUpdate(previousWorkspace, workspaceName);
     logTransitionEnd(true, 0);
+    console.info(`bookspace: [SUMMARY] Transition complete: 0 items displayed, success=true, workspace="${workspaceName}"`);
     isProcessing = false;
     return { success: true, count: 0, message: 'Showing change bookmarks and bookspace folder only' };
     
   } catch (error) {
     console.error('bookspace: Error showing none workspace:', error);
     logTransitionEnd(false, 0);
+    console.info(`bookspace: [SUMMARY] Transition failed: success=false, error="${error.message}"`);
     isProcessing = false;
     return { success: false, error: error.message };
   }
@@ -498,6 +511,7 @@ async function showAllBookmarks() {
   }
   
   logTransitionStart('showAllBookmarks', workspaceName);
+  console.info(`bookspace: [SUMMARY] Transition start: showAllBookmarks from "${previousWorkspace || 'null'}" to "${workspaceName}"`);
   isProcessing = true;
   
   try {
@@ -537,6 +551,7 @@ async function showAllBookmarks() {
         
         const workspaceCountAfter = await countItemsInFolder(previousWorkspaceFolder.id, true);
         logTransitionMove(itemsToMoveBack.length, 'toolbar', `workspace:${currentWorkspace}`);
+        console.info(`bookspace: [SUMMARY] Moved back ${itemsToMoveBack.length} items to workspace "${currentWorkspace}"`);
       }
     } else {
       logTransitionPath('from no workspace');
@@ -561,6 +576,7 @@ async function showAllBookmarks() {
       if (itemsToMove.length > 0) {
         const bookspaceCountAfter = await countItemsInFolder(bookspaceFolder.id, true);
         logTransitionMove(itemsToMove.length, 'toolbar', 'bookspace');
+        console.info(`bookspace: [SUMMARY] Moved back ${itemsToMove.length} items to bookspace`);
       }
     }
     
@@ -585,18 +601,21 @@ async function showAllBookmarks() {
     
     const toolbarCountAfter = await countItemsInFolder(TOOLBAR_ID, false);
     logTransitionMove(count, 'bookspace', 'toolbar');
+    console.info(`bookspace: [SUMMARY] Displayed ${count} items from bookspace to toolbar`);
     
     currentWorkspace = 'bookspace-all';
     // Ensure "change bookmarks" stays first
     await ensureChangeBookmarksFirst();
     logTransitionUpdate(previousWorkspace, workspaceName);
     logTransitionEnd(true, count);
+    console.info(`bookspace: [SUMMARY] Transition complete: ${count} items displayed, success=true, workspace="${workspaceName}"`);
     isProcessing = false;
     return { success: true, count };
     
   } catch (error) {
     console.error('bookspace: Error showing all bookmarks:', error);
     logTransitionEnd(false, 0);
+    console.info(`bookspace: [SUMMARY] Transition failed: success=false, error="${error.message}"`);
     isProcessing = false;
     return { success: false, error: error.message };
   }
