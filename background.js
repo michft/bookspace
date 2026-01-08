@@ -149,6 +149,12 @@ async function switchToWorkspace(workspaceName) {
     return { success: false, message: 'No workspace name provided' };
   }
   
+  // Check if already in this workspace - no action needed
+  if (currentWorkspace && currentWorkspace.toLowerCase() === workspaceName.toLowerCase()) {
+    console.log(`bookspace: Already in workspace "${workspaceName}", no action needed`);
+    return { success: true, message: `Already in workspace "${workspaceName}"`, count: 0 };
+  }
+  
   // Special case: "bookspace-none" workspace shows only change bookmarks and bookspace folder
   if (workspaceName.toLowerCase() === 'bookspace-none') {
     return await showNoneWorkspace();
@@ -278,6 +284,12 @@ async function showNoneWorkspace() {
   if (isProcessing) {
     console.log('bookspace: Already processing, skipping...');
     return { success: false, message: 'Already processing' };
+  }
+  
+  // If already in bookspace-none, no action needed
+  if (currentWorkspace && currentWorkspace.toLowerCase() === 'bookspace-none') {
+    console.log('bookspace: Already in bookspace-none workspace, no action needed');
+    return { success: true, count: 0, message: 'Already in bookspace-none workspace' };
   }
   
   isProcessing = true;

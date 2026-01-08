@@ -62,6 +62,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     
+    // Check if already in this workspace - no action needed
+    const state = await browser.runtime.sendMessage({ action: 'getState' });
+    if (state.currentWorkspace && state.currentWorkspace.toLowerCase() === workspaceName.toLowerCase()) {
+      return; // Already in this workspace, no action needed
+    }
+    
     // Disable both buttons while switching
     bookspaceNoneBtn.disabled = true;
     bookspaceAllBtn.disabled = true;
