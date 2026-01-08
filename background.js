@@ -57,12 +57,13 @@ async function getOrCreateBookspaceFolder() {
     return existingFolder;
   }
   
-  // Create bookspace folder at the end of the toolbar
+  // Create bookspace folder after "change bookmarks" (at index 1)
   console.log('bookspace: Creating bookspace folder');
   const newFolder = await browser.bookmarks.create({
     parentId: TOOLBAR_ID,
     title: BOOKSPACE_FOLDER_NAME,
-    type: 'folder'
+    type: 'folder',
+    index: 1 // After "change bookmarks" (index 0)
   });
   
   return newFolder;
