@@ -5,18 +5,77 @@
 /**
  * Bookspace Extension
  * 
- * Updates bookmarks in a folder matching the workspace name when a workspace is loaded.
- * The folder is synced with the currently open tabs in the workspace.
- * Since we can't directly access zen-browser's internal workspace API, we use
- * storage events and polling to detect workspace changes.
+ * Filters bookmarks display based on the current workspace name.
+ * When a workspace is active, only bookmarks from a folder matching
+ * the workspace name are displayed. If no matching folder exists,
+ * all bookmarks are shown.
  */
 
-// Store the last known workspace name
-let lastWorkspaceName = null;
+// Store the current workspace name and state
+let currentWorkspaceName = null;
 let isProcessing = false;
 
+// Store the original bookmarks toolbar state
+let originalToolbarBookmarks = [];
+let workspaceFolder = null;
+
 /**
- * Find a bookmark folder by name (case-insensitive)
+ * Get the bookmarks toolbar folder
+ */
+async function getToolbarFolder() {
+  try {
+    const tree = await browser.bookmarks.getTree();
+    // The toolbar folder is typically the second child of the root
+    // In Firefox/Zen, it has the id 'toolbar_____'
+    function findToolbar(nodes) {
+      for (const node of nodes) {
+        if (node.id === 'toolbar_____' || node.title === 'Bookmarks Toolbar') {
+          return node;
+        }
+        if (node.children) {
+          const found = findToolbar(node.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+    return findToolbar(tree);
+  } catch (error) {
+    console.error('Bookspace: Error getting toolbar folder:', error);
+    return null;
+  }
+}
+
+/**
+ * Find a bookmark folder by name within a parent folder (case-insensitive)
+ */
+async function findFolderByName(parentFolder, folderName) {
+  if (!parentFolder || !parentFolder.children) {
+    // If no children loaded, fetch them
+    if (parentFolder && parentFolder.id) {
+      try {
+        const children = await browser.bookmarks.getChildren(parentFolder.id);
+        parentFolder.children = children;
+      } catch (error) {
+        console.error('Bookspace: Error getting children:', error);
+        return null;
+      }
+    } else {
+      return null;
+    }
+  }
+  
+  for (const child of parentFolder.children) {
+    if (child.type === 'folder' && 
+        child.title.toLowerCase() === folderName.toLowerCase()) {
+      return child;
+    }
+  }
+  return null;
+}
+
+/**
+ * Find a bookmark folder anywhere in the bookmarks tree
  */
 async function findBookmarkFolder(folderName) {
   try {
@@ -25,6 +84,7 @@ async function findBookmarkFolder(folderName) {
     function searchFolders(nodes) {
       for (const node of nodes) {
         if (node.type === 'folder' && 
+            node.title && 
             node.title.toLowerCase() === folderName.toLowerCase()) {
           return node;
         }
@@ -44,274 +104,166 @@ async function findBookmarkFolder(folderName) {
 }
 
 /**
- * Get all bookmark URLs from a folder (non-recursive, only direct children)
+ * Get all bookmarks from a folder
  */
-async function getBookmarkUrls(folder) {
-  const urls = [];
-  
-  if (!folder || !folder.children) {
-    return urls;
+async function getBookmarksInFolder(folderId) {
+  try {
+    const children = await browser.bookmarks.getChildren(folderId);
+    return children.filter(child => child.type === 'bookmark' || child.url);
+  } catch (error) {
+    console.error('Bookspace: Error getting bookmarks in folder:', error);
+    return [];
   }
-  
-  for (const child of folder.children) {
-    if (child.type === 'bookmark' && child.url) {
-      urls.push(child.url);
-    }
-  }
-  
-  return urls;
 }
 
 /**
- * Get all bookmarks from a folder (returns bookmark objects)
+ * Get all bookmarks from a folder including subfolders
  */
-async function getBookmarksInFolder(folder) {
+async function getAllBookmarksInFolder(folderId) {
   const bookmarks = [];
   
-  if (!folder || !folder.children) {
-    return bookmarks;
-  }
-  
-  for (const child of folder.children) {
-    if (child.type === 'bookmark') {
-      bookmarks.push(child);
+  try {
+    const children = await browser.bookmarks.getChildren(folderId);
+    
+    for (const child of children) {
+      if (child.type === 'bookmark' || child.url) {
+        bookmarks.push(child);
+      } else if (child.type === 'folder') {
+        // Recursively get bookmarks from subfolders
+        const subBookmarks = await getAllBookmarksInFolder(child.id);
+        bookmarks.push(...subBookmarks);
+      }
     }
+  } catch (error) {
+    console.error('Bookspace: Error getting all bookmarks:', error);
   }
   
   return bookmarks;
 }
 
 /**
- * Create or get bookmark folder by name
+ * Apply workspace bookmark filter
+ * This updates the extension state and notifies any open popups
  */
-async function getOrCreateBookmarkFolder(folderName) {
-  // First try to find existing folder
-  let folder = await findBookmarkFolder(folderName);
+async function applyWorkspaceFilter(workspaceName) {
+  if (isProcessing) {
+    console.log('Bookspace: Already processing, skipping...');
+    return;
+  }
+  
+  isProcessing = true;
+  
+  try {
+    console.log(`Bookspace: Applying filter for workspace "${workspaceName}"`);
+    
+    // Find folder matching workspace name
+    const folder = await findBookmarkFolder(workspaceName);
+    
+    if (folder) {
+      workspaceFolder = folder;
+      console.log(`Bookspace: Found matching folder "${folder.title}" (${folder.id})`);
+      
+      // Get bookmarks from the workspace folder
+      const bookmarks = await getAllBookmarksInFolder(folder.id);
+      console.log(`Bookspace: Folder contains ${bookmarks.length} bookmarks`);
+      
+      // Store the current state
+      await browser.storage.local.set({
+        currentWorkspace: workspaceName,
+        hasMatchingFolder: true,
+        workspaceFolderId: folder.id,
+        bookmarkCount: bookmarks.length
+      });
+      
+    } else {
+      workspaceFolder = null;
+      console.log(`Bookspace: No folder found matching "${workspaceName}", showing all bookmarks`);
+      
+      // Store the state indicating no matching folder
+      await browser.storage.local.set({
+        currentWorkspace: workspaceName,
+        hasMatchingFolder: false,
+        workspaceFolderId: null,
+        bookmarkCount: 0
+      });
+    }
+    
+    currentWorkspaceName = workspaceName;
+    
+  } catch (error) {
+    console.error('Bookspace: Error applying workspace filter:', error);
+  } finally {
+    isProcessing = false;
+  }
+}
+
+/**
+ * Get bookmarks for the current workspace
+ * Returns bookmarks from the matching folder, or all bookmarks if no match
+ */
+async function getWorkspaceBookmarks(workspaceName) {
+  const folder = await findBookmarkFolder(workspaceName);
   
   if (folder) {
-    return folder;
-  }
-  
-  // If not found, create it in the bookmarks toolbar
-  try {
-    const toolbar = await browser.bookmarks.get('toolbar_____');
-    const newFolder = await browser.bookmarks.create({
-      parentId: toolbar[0].id,
-      title: folderName,
-      type: 'folder'
-    });
-    
-    console.log(`Bookspace: Created bookmark folder "${folderName}"`);
-    return newFolder;
-  } catch (error) {
-    console.error('Bookspace: Error creating bookmark folder:', error);
-    // Fallback: try to create in "Other Bookmarks"
-    try {
-      const otherBookmarks = await browser.bookmarks.get('unfiled_____');
-      const newFolder = await browser.bookmarks.create({
-        parentId: otherBookmarks[0].id,
-        title: folderName,
-        type: 'folder'
-      });
-      return newFolder;
-    } catch (fallbackError) {
-      console.error('Bookspace: Error creating folder in fallback location:', fallbackError);
-      throw fallbackError;
+    // Return bookmarks from the workspace folder
+    const bookmarks = await getAllBookmarksInFolder(folder.id);
+    return {
+      filtered: true,
+      folderName: folder.title,
+      bookmarks: bookmarks
+    };
+  } else {
+    // Return all bookmarks from toolbar
+    const toolbar = await getToolbarFolder();
+    if (toolbar) {
+      const bookmarks = await getAllBookmarksInFolder(toolbar.id);
+      return {
+        filtered: false,
+        folderName: null,
+        bookmarks: bookmarks
+      };
     }
-  }
-}
-
-/**
- * Update bookmarks in a folder to match current tabs
- */
-async function updateBookmarksFolder(folderName) {
-  if (isProcessing) {
-    console.log('Bookspace: Already processing, skipping...');
-    return;
-  }
-  
-  isProcessing = true;
-  
-  try {
-    // Get all current tabs
-    const tabs = await browser.tabs.query({});
-    
-    if (tabs.length === 0) {
-      console.log('Bookspace: No tabs to bookmark');
-      isProcessing = false;
-      return { success: true, count: 0 };
-    }
-    
-    // Get or create the folder
-    const folder = await getOrCreateBookmarkFolder(folderName);
-    
-    // Get existing bookmarks in the folder
-    const existingBookmarks = await getBookmarksInFolder(folder);
-    const existingUrls = new Set(existingBookmarks.map(b => b.url));
-    
-    // Get URLs from current tabs (filter out special pages)
-    const tabUrls = tabs
-      .filter(tab => tab.url && 
-        !tab.url.startsWith('about:') && 
-        !tab.url.startsWith('moz-extension:') &&
-        !tab.url.startsWith('chrome:') &&
-        !tab.url.startsWith('zen:'))
-      .map(tab => ({
-        url: tab.url,
-        title: tab.title || tab.url
-      }));
-    
-    const currentUrls = new Set(tabUrls.map(t => t.url));
-    
-    // Remove bookmarks that are no longer in current tabs
-    for (const bookmark of existingBookmarks) {
-      if (!currentUrls.has(bookmark.url)) {
-        try {
-          await browser.bookmarks.remove(bookmark.id);
-          console.log(`Bookspace: Removed bookmark "${bookmark.title}"`);
-        } catch (error) {
-          console.error(`Bookspace: Error removing bookmark:`, error);
-        }
-      }
-    }
-    
-    // Add new bookmarks for tabs that aren't bookmarked yet
-    let addedCount = 0;
-    for (const tab of tabUrls) {
-      if (!existingUrls.has(tab.url)) {
-        try {
-          await browser.bookmarks.create({
-            parentId: folder.id,
-            title: tab.title,
-            url: tab.url
-          });
-          addedCount++;
-          console.log(`Bookspace: Added bookmark "${tab.title}"`);
-        } catch (error) {
-          console.error(`Bookspace: Error creating bookmark for ${tab.url}:`, error);
-        }
-      }
-    }
-    
-    // Update existing bookmarks if titles changed
-    for (const tab of tabUrls) {
-      const existingBookmark = existingBookmarks.find(b => b.url === tab.url);
-      if (existingBookmark && existingBookmark.title !== tab.title) {
-        try {
-          await browser.bookmarks.update(existingBookmark.id, {
-            title: tab.title
-          });
-          console.log(`Bookspace: Updated bookmark title for "${tab.url}"`);
-        } catch (error) {
-          console.error(`Bookspace: Error updating bookmark:`, error);
-        }
-      }
-    }
-    
-    console.log(`Bookspace: Updated folder "${folderName}" with ${tabUrls.length} bookmarks (added ${addedCount} new)`);
-    isProcessing = false;
-    return { success: true, count: tabUrls.length, added: addedCount };
-    
-  } catch (error) {
-    console.error('Bookspace: Error updating bookmarks folder:', error);
-    isProcessing = false;
-    throw error;
-  }
-}
-
-/**
- * Open bookmarks from a folder in new tabs
- */
-async function openBookmarksFromFolder(folderName) {
-  if (isProcessing) {
-    console.log('Bookspace: Already processing, skipping...');
-    return;
-  }
-  
-  isProcessing = true;
-  
-  try {
-    const folder = await findBookmarkFolder(folderName);
-    
-    if (!folder) {
-      console.log(`Bookspace: No bookmark folder found matching "${folderName}"`);
-      isProcessing = false;
-      return { success: false, count: 0 };
-    }
-    
-    const urls = await getBookmarkUrls(folder);
-    
-    if (urls.length === 0) {
-      console.log(`Bookspace: Folder "${folderName}" contains no bookmarks`);
-      isProcessing = false;
-      return { success: true, count: 0 };
-    }
-    
-    console.log(`Bookspace: Opening ${urls.length} bookmarks from folder "${folderName}"`);
-    
-    // Open all bookmarks in new tabs
-    for (const url of urls) {
-      try {
-        await browser.tabs.create({ url: url, active: false });
-      } catch (error) {
-        console.error(`Bookspace: Error opening bookmark ${url}:`, error);
-      }
-    }
-    
-    // Activate the first tab
-    if (urls.length > 0) {
-      const tabs = await browser.tabs.query({});
-      const newTabs = tabs.filter(tab => urls.includes(tab.url));
-      if (newTabs.length > 0) {
-        await browser.tabs.update(newTabs[0].id, { active: true });
-      }
-    }
-    
-    isProcessing = false;
-    return { success: true, count: urls.length };
-    
-  } catch (error) {
-    console.error('Bookspace: Error opening bookmarks:', error);
-    isProcessing = false;
-    throw error;
+    return {
+      filtered: false,
+      folderName: null,
+      bookmarks: []
+    };
   }
 }
 
 /**
  * Check for workspace changes by reading from storage
- * Zen-browser might store workspace info in browser.storage
  */
 async function checkWorkspaceChange() {
   try {
     // Try to get workspace info from storage
-    // Zen-browser might store this in local storage
-    const result = await browser.storage.local.get(['zenWorkspace', 'activeWorkspace', 'workspaceName']);
+    const result = await browser.storage.local.get([
+      'zenWorkspace', 
+      'activeWorkspace', 
+      'workspaceName',
+      'bookspaceWorkspace'
+    ]);
     
-    const workspaceName = result.zenWorkspace || result.activeWorkspace || result.workspaceName;
+    const workspaceName = result.bookspaceWorkspace || 
+                          result.zenWorkspace || 
+                          result.activeWorkspace || 
+                          result.workspaceName;
     
-    if (workspaceName && workspaceName !== lastWorkspaceName) {
-      console.log(`Bookspace: Workspace changed from "${lastWorkspaceName}" to "${workspaceName}"`);
-      lastWorkspaceName = workspaceName;
-      
-      // Update bookmarks folder to match current tabs
-      await updateBookmarksFolder(workspaceName).catch(err => {
-        console.error('Bookspace: Error updating bookmarks for workspace:', err);
-      });
+    if (workspaceName && workspaceName !== currentWorkspaceName) {
+      console.log(`Bookspace: Workspace changed from "${currentWorkspaceName}" to "${workspaceName}"`);
+      await applyWorkspaceFilter(workspaceName);
     }
   } catch (error) {
-    // Storage might not be available or workspace info might not be stored there
-    // This is expected if zen-browser doesn't expose workspace info via storage
     console.debug('Bookspace: Could not read workspace from storage:', error.message);
   }
 }
 
 /**
- * Listen for storage changes (in case zen-browser updates workspace info in storage)
+ * Listen for storage changes
  */
 browser.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local') {
-    // Check if workspace-related keys changed
-    const workspaceKeys = ['zenWorkspace', 'activeWorkspace', 'workspaceName'];
+    const workspaceKeys = ['zenWorkspace', 'activeWorkspace', 'workspaceName', 'bookspaceWorkspace'];
     const hasWorkspaceChange = workspaceKeys.some(key => key in changes);
     
     if (hasWorkspaceChange) {
@@ -321,25 +273,9 @@ browser.storage.onChanged.addListener((changes, areaName) => {
 });
 
 /**
- * Listen for tab/window changes as a fallback mechanism
- * When a new window is created or tabs change significantly, it might indicate a workspace change
+ * Poll for workspace changes periodically
  */
-let lastTabCount = 0;
-browser.tabs.onCreated.addListener(async (tab) => {
-  // Check workspace change when tabs are created
-  await checkWorkspaceChange();
-});
-
-browser.windows.onCreated.addListener(async (window) => {
-  // Check workspace change when new windows are created
-  await checkWorkspaceChange();
-});
-
-/**
- * Poll for workspace changes periodically as a fallback
- * This is less efficient but necessary if zen-browser doesn't expose workspace info via storage
- */
-setInterval(checkWorkspaceChange, 2000); // Check every 2 seconds
+setInterval(checkWorkspaceChange, 2000);
 
 /**
  * Initial check when extension loads
@@ -355,43 +291,79 @@ browser.runtime.onInstalled.addListener(() => {
 // Initial check
 checkWorkspaceChange();
 
-// Listen for messages from popup
+/**
+ * Listen for messages from popup
+ */
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'loadBookmarks') {
+  if (message.action === 'getBookmarks') {
     const workspaceName = message.workspaceName;
     
-    // Open bookmarks from folder
-    openBookmarksFromFolder(workspaceName).then(async () => {
-      try {
-        const folder = await findBookmarkFolder(workspaceName);
-        if (folder) {
-          const urls = await getBookmarkUrls(folder);
-          sendResponse({ success: true, count: urls.length });
-        } else {
-          sendResponse({ success: false, error: `No folder found matching "${workspaceName}"` });
-        }
-      } catch (error) {
-        sendResponse({ success: false, error: error.message });
-      }
-    }).catch((error) => {
-      sendResponse({ success: false, error: error.message });
-    });
-    
-    return true; // Keep the message channel open for async response
-  }
-  
-  if (message.action === 'updateBookmarks') {
-    const workspaceName = message.workspaceName;
-    
-    // Update bookmarks folder to match current tabs
-    updateBookmarksFolder(workspaceName).then((result) => {
+    getWorkspaceBookmarks(workspaceName).then((result) => {
       sendResponse(result);
     }).catch((error) => {
+      sendResponse({ error: error.message });
+    });
+    
+    return true;
+  }
+  
+  if (message.action === 'setWorkspace') {
+    const workspaceName = message.workspaceName;
+    
+    // Store the workspace name and apply filter
+    browser.storage.local.set({ bookspaceWorkspace: workspaceName }).then(() => {
+      return applyWorkspaceFilter(workspaceName);
+    }).then(() => {
+      sendResponse({ success: true });
+    }).catch((error) => {
       sendResponse({ success: false, error: error.message });
     });
     
-    return true; // Keep the message channel open for async response
+    return true;
+  }
+  
+  if (message.action === 'getCurrentState') {
+    browser.storage.local.get([
+      'currentWorkspace',
+      'hasMatchingFolder',
+      'workspaceFolderId',
+      'bookmarkCount'
+    ]).then((state) => {
+      sendResponse(state);
+    }).catch((error) => {
+      sendResponse({ error: error.message });
+    });
+    
+    return true;
+  }
+  
+  if (message.action === 'openBookmark') {
+    const url = message.url;
+    browser.tabs.create({ url: url }).then(() => {
+      sendResponse({ success: true });
+    }).catch((error) => {
+      sendResponse({ success: false, error: error.message });
+    });
+    
+    return true;
+  }
+  
+  if (message.action === 'openAllBookmarks') {
+    const workspaceName = message.workspaceName;
+    
+    getWorkspaceBookmarks(workspaceName).then(async (result) => {
+      for (const bookmark of result.bookmarks) {
+        if (bookmark.url) {
+          await browser.tabs.create({ url: bookmark.url, active: false });
+        }
+      }
+      sendResponse({ success: true, count: result.bookmarks.length });
+    }).catch((error) => {
+      sendResponse({ success: false, error: error.message });
+    });
+    
+    return true;
   }
 });
 
-console.log('Bookspace: Extension loaded and monitoring for workspace changes');
+console.log('Bookspace: Extension loaded - filtering bookmarks by workspace');

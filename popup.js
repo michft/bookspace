@@ -4,104 +4,257 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const workspaceInput = document.getElementById('workspace-name');
-  const loadButton = document.getElementById('load-bookmarks');
-  const statusDiv = document.getElementById('status');
+  const applyBtn = document.getElementById('apply-btn');
+  const statusBar = document.getElementById('status-bar');
+  const bookmarksContainer = document.getElementById('bookmarks-container');
+  const openAllBtn = document.getElementById('open-all-btn');
+  const refreshBtn = document.getElementById('refresh-btn');
   
-  // Try to get the current workspace name from storage
-  browser.storage.local.get(['zenWorkspace', 'activeWorkspace', 'workspaceName']).then((result) => {
-    const workspaceName = result.zenWorkspace || result.activeWorkspace || result.workspaceName;
-    if (workspaceName) {
-      workspaceInput.value = workspaceName;
+  let currentWorkspace = '';
+  
+  /**
+   * Get favicon URL for a bookmark
+   */
+  function getFaviconUrl(url) {
+    try {
+      const urlObj = new URL(url);
+      return `https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=32`;
+    } catch {
+      return '';
     }
-  });
-  
-  function showStatus(message, isError = false) {
-    statusDiv.textContent = message;
-    statusDiv.className = 'status ' + (isError ? 'error' : 'success');
-    setTimeout(() => {
-      statusDiv.className = 'status';
-      statusDiv.textContent = '';
-    }, 3000);
   }
   
-  const updateButton = document.getElementById('update-bookmarks');
-  
-  loadButton.addEventListener('click', async () => {
-    const workspaceName = workspaceInput.value.trim();
-    
-    if (!workspaceName) {
-      showStatus('Please enter a workspace name', true);
+  /**
+   * Render bookmarks list
+   */
+  function renderBookmarks(result) {
+    if (!result.bookmarks || result.bookmarks.length === 0) {
+      bookmarksContainer.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">📭</div>
+          <div>${result.filtered ? 
+            `No bookmarks in folder "${result.folderName}"` : 
+            'No bookmarks found'}</div>
+        </div>
+      `;
       return;
     }
     
-    loadButton.disabled = true;
-    loadButton.textContent = 'Loading...';
+    const list = document.createElement('ul');
+    list.className = 'bookmark-list';
+    
+    for (const bookmark of result.bookmarks) {
+      if (!bookmark.url) continue;
+      
+      const item = document.createElement('li');
+      item.className = 'bookmark-item';
+      item.dataset.url = bookmark.url;
+      
+      const favicon = document.createElement('img');
+      favicon.className = 'bookmark-favicon';
+      favicon.src = getFaviconUrl(bookmark.url);
+      favicon.onerror = () => { favicon.style.display = 'none'; };
+      
+      const info = document.createElement('div');
+      info.className = 'bookmark-info';
+      
+      const title = document.createElement('div');
+      title.className = 'bookmark-title';
+      title.textContent = bookmark.title || bookmark.url;
+      
+      const url = document.createElement('div');
+      url.className = 'bookmark-url';
+      url.textContent = bookmark.url;
+      
+      info.appendChild(title);
+      info.appendChild(url);
+      
+      item.appendChild(favicon);
+      item.appendChild(info);
+      
+      item.addEventListener('click', () => {
+        browser.runtime.sendMessage({
+          action: 'openBookmark',
+          url: bookmark.url
+        });
+      });
+      
+      list.appendChild(item);
+    }
+    
+    bookmarksContainer.innerHTML = '';
+    bookmarksContainer.appendChild(list);
+  }
+  
+  /**
+   * Update status bar
+   */
+  function updateStatusBar(result) {
+    if (result.filtered) {
+      statusBar.className = 'status-bar filtered';
+      statusBar.textContent = `📁 Showing ${result.bookmarks.length} bookmark(s) from "${result.folderName}"`;
+    } else {
+      statusBar.className = 'status-bar all';
+      statusBar.textContent = `📚 Showing all ${result.bookmarks.length} bookmark(s) (no matching folder)`;
+    }
+  }
+  
+  /**
+   * Load bookmarks for workspace
+   */
+  async function loadBookmarks(workspaceName) {
+    if (!workspaceName) {
+      statusBar.className = 'status-bar';
+      statusBar.textContent = 'Enter a workspace name to filter bookmarks';
+      bookmarksContainer.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🔍</div>
+          <div>Enter a workspace name above to see filtered bookmarks</div>
+        </div>
+      `;
+      return;
+    }
+    
+    bookmarksContainer.innerHTML = '<div class="loading">Loading bookmarks</div>';
     
     try {
-      // Send message to background script to load bookmarks
-      const response = await browser.runtime.sendMessage({
-        action: 'loadBookmarks',
+      const result = await browser.runtime.sendMessage({
+        action: 'getBookmarks',
         workspaceName: workspaceName
       });
       
-      if (response.success) {
-        if (response.count > 0) {
-          showStatus(`Opened ${response.count} bookmark(s) from "${workspaceName}"`);
-        } else {
-          showStatus(`No bookmarks found in folder "${workspaceName}"`, true);
-        }
-      } else {
-        showStatus(response.error || 'Failed to load bookmarks', true);
+      if (result.error) {
+        throw new Error(result.error);
       }
+      
+      updateStatusBar(result);
+      renderBookmarks(result);
+      
     } catch (error) {
       console.error('Error loading bookmarks:', error);
-      showStatus('Error: ' + error.message, true);
-    } finally {
-      loadButton.disabled = false;
-      loadButton.textContent = 'Load Bookmarks';
+      statusBar.className = 'status-bar';
+      statusBar.textContent = 'Error loading bookmarks';
+      bookmarksContainer.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">⚠️</div>
+          <div>Error: ${error.message}</div>
+        </div>
+      `;
     }
-  });
+  }
   
-  updateButton.addEventListener('click', async () => {
+  /**
+   * Apply workspace filter
+   */
+  async function applyWorkspace() {
     const workspaceName = workspaceInput.value.trim();
     
     if (!workspaceName) {
-      showStatus('Please enter a workspace name', true);
       return;
     }
     
-    updateButton.disabled = true;
-    updateButton.textContent = 'Updating...';
+    currentWorkspace = workspaceName;
+    applyBtn.disabled = true;
+    applyBtn.textContent = '...';
     
     try {
-      // Send message to background script to update bookmarks
-      const response = await browser.runtime.sendMessage({
-        action: 'updateBookmarks',
+      await browser.runtime.sendMessage({
+        action: 'setWorkspace',
         workspaceName: workspaceName
       });
       
-      if (response.success) {
-        if (response.added !== undefined) {
-          showStatus(`Updated folder "${workspaceName}": ${response.count} bookmarks (added ${response.added} new)`);
-        } else {
-          showStatus(`Updated folder "${workspaceName}" with ${response.count} bookmark(s)`);
-        }
-      } else {
-        showStatus(response.error || 'Failed to update bookmarks', true);
-      }
+      await loadBookmarks(workspaceName);
+      
     } catch (error) {
-      console.error('Error updating bookmarks:', error);
-      showStatus('Error: ' + error.message, true);
+      console.error('Error applying workspace:', error);
     } finally {
-      updateButton.disabled = false;
-      updateButton.textContent = 'Update Bookmarks Folder';
+      applyBtn.disabled = false;
+      applyBtn.textContent = 'Apply';
+    }
+  }
+  
+  /**
+   * Open all bookmarks
+   */
+  async function openAllBookmarks() {
+    if (!currentWorkspace) {
+      return;
+    }
+    
+    openAllBtn.disabled = true;
+    openAllBtn.textContent = 'Opening...';
+    
+    try {
+      const result = await browser.runtime.sendMessage({
+        action: 'openAllBookmarks',
+        workspaceName: currentWorkspace
+      });
+      
+      if (result.success) {
+        openAllBtn.textContent = `Opened ${result.count}!`;
+        setTimeout(() => {
+          openAllBtn.textContent = 'Open All';
+          openAllBtn.disabled = false;
+        }, 1500);
+      } else {
+        throw new Error(result.error || 'Failed to open bookmarks');
+      }
+      
+    } catch (error) {
+      console.error('Error opening bookmarks:', error);
+      openAllBtn.textContent = 'Error';
+      setTimeout(() => {
+        openAllBtn.textContent = 'Open All';
+        openAllBtn.disabled = false;
+      }, 1500);
+    }
+  }
+  
+  // Event listeners
+  applyBtn.addEventListener('click', applyWorkspace);
+  
+  workspaceInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      applyWorkspace();
     }
   });
   
-  // Allow Enter key to trigger load
-  workspaceInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      loadButton.click();
+  openAllBtn.addEventListener('click', openAllBookmarks);
+  
+  refreshBtn.addEventListener('click', () => {
+    if (currentWorkspace) {
+      loadBookmarks(currentWorkspace);
     }
+  });
+  
+  // Initialize: get current state and load bookmarks
+  browser.runtime.sendMessage({ action: 'getCurrentState' }).then((state) => {
+    if (state && state.currentWorkspace) {
+      currentWorkspace = state.currentWorkspace;
+      workspaceInput.value = state.currentWorkspace;
+      loadBookmarks(state.currentWorkspace);
+    } else {
+      // Try to get from storage
+      browser.storage.local.get(['bookspaceWorkspace']).then((result) => {
+        if (result.bookspaceWorkspace) {
+          currentWorkspace = result.bookspaceWorkspace;
+          workspaceInput.value = result.bookspaceWorkspace;
+          loadBookmarks(result.bookspaceWorkspace);
+        } else {
+          statusBar.className = 'status-bar';
+          statusBar.textContent = 'Enter a workspace name to filter bookmarks';
+          bookmarksContainer.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">🔍</div>
+              <div>Enter a workspace name above to see filtered bookmarks</div>
+            </div>
+          `;
+        }
+      });
+    }
+  }).catch((error) => {
+    console.error('Error getting current state:', error);
+    statusBar.className = 'status-bar';
+    statusBar.textContent = 'Enter a workspace name to filter bookmarks';
   });
 });
