@@ -5,6 +5,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const workspaceInput = document.getElementById('workspace-name');
   const switchBtn = document.getElementById('switch-btn');
+  const noMatchBtn = document.getElementById('no-match-btn');
   const showAllBtn = document.getElementById('show-all-btn');
   const organizeBtn = document.getElementById('organize-btn');
   const messageDiv = document.getElementById('message');
@@ -28,7 +29,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentWorkspaceDiv.textContent = state.currentWorkspace;
         currentWorkspaceDiv.className = 'status-value';
       } else {
-        currentWorkspaceDiv.textContent = state.isOrganized ? 'None selected' : 'Not organized';
+        if (state.isOrganized) {
+          // Check if we're in "no-match" mode (workspace folders visible)
+          const toolbarChildren = await browser.bookmarks.getChildren('toolbar_____');
+          const hasWorkspaceFolders = toolbarChildren.some(
+            item => item.type === 'folder' && item.title !== 'bookspace'
+          );
+          currentWorkspaceDiv.textContent = hasWorkspaceFolders ? 'Original layout' : 'None selected';
+        } else {
+          currentWorkspaceDiv.textContent = 'Not organized';
+        }
         currentWorkspaceDiv.className = 'status-value inactive';
       }
       
@@ -93,6 +103,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   workspaceInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
       switchWorkspace(workspaceInput.value.trim());
+    }
+  });
+  
+  noMatchBtn.addEventListener('click', async () => {
+    noMatchBtn.disabled = true;
+    noMatchBtn.textContent = 'Loading...';
+    
+    try {
+      const response = await browser.runtime.sendMessage({ action: 'showNoMatch' });
+      
+      if (response.success) {
+        showMessage(`Showing original layout - ${response.count} items`);
+        await refreshState();
+      } else {
+        showMessage(response.error || 'Failed to show original layout', true);
+      }
+    } catch (error) {
+      console.error('Error showing no-match:', error);
+      showMessage('Error: ' + error.message, true);
+    } finally {
+      noMatchBtn.disabled = false;
+      noMatchBtn.textContent = 'No Match';
     }
   });
   
