@@ -147,9 +147,14 @@ async function switchToWorkspace(workspaceName) {
     return { success: false, message: 'No workspace name provided' };
   }
   
-  // Special case: "none" workspace shows only change bookmarks and bookspace folder
-  if (workspaceName.toLowerCase() === 'none') {
+  // Special case: "none" or "bookspace-none" workspace shows only change bookmarks and bookspace folder
+  if (workspaceName.toLowerCase() === 'none' || workspaceName.toLowerCase() === 'bookspace-none') {
     return await showNoneWorkspace();
+  }
+  
+  // Special case: "bookspace-all" workspace shows all bookmarks from bookspace folder
+  if (workspaceName.toLowerCase() === 'bookspace-all') {
+    return await showAllBookmarks();
   }
   
   isProcessing = true;
@@ -159,8 +164,8 @@ async function switchToWorkspace(workspaceName) {
     
     // First, if there's a current workspace, move its bookmarks back into their folder
     if (currentWorkspace && currentWorkspace !== workspaceName) {
-      // If previous workspace was "none", we need to move items back differently
-      if (currentWorkspace.toLowerCase() === 'none') {
+      // If previous workspace was "none" or "bookspace-none", we need to move items back differently
+      if (currentWorkspace.toLowerCase() === 'none' || currentWorkspace.toLowerCase() === 'bookspace-none') {
         // Move all toolbar items (except bookspace and change bookmarks) back into bookspace
         const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
         for (const item of toolbarChildren) {
@@ -279,8 +284,8 @@ async function showNoneWorkspace() {
     const bookspaceFolder = await getOrCreateBookspaceFolder();
     
     // First, if there's a current workspace, move its bookmarks back into their folder
-    if (currentWorkspace && currentWorkspace.toLowerCase() !== 'none') {
-      if (currentWorkspace.toLowerCase() === 'none') {
+    if (currentWorkspace && currentWorkspace.toLowerCase() !== 'none' && currentWorkspace.toLowerCase() !== 'bookspace-none') {
+      if (currentWorkspace.toLowerCase() === 'none' || currentWorkspace.toLowerCase() === 'bookspace-none') {
         // Already in none mode, nothing to do
       } else {
         const previousWorkspaceFolder = await findSubfolder(bookspaceFolder.id, currentWorkspace);
@@ -343,10 +348,10 @@ async function showNoneWorkspace() {
       }
     }
     
-    currentWorkspace = 'none';
+    currentWorkspace = 'bookspace-none';
     // Ensure "change bookmarks" stays first
     await ensureChangeBookmarksFirst();
-    console.log('bookspace: Switched to "none" workspace - showing only change bookmarks and bookspace folder');
+    console.log('bookspace: Switched to "bookspace-none" workspace - showing only change bookmarks and bookspace folder');
     isProcessing = false;
     return { success: true, count: 0, message: 'Showing change bookmarks and bookspace folder only' };
     
