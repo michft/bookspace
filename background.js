@@ -118,6 +118,8 @@ async function organizeBookmarksIntoBookspace() {
       }
     }
     
+    // Ensure "change bookmarks" stays first
+    await ensureChangeBookmarksFirst();
     console.log(`bookspace: Organized ${movedCount} items into bookspace folder`);
     isProcessing = false;
     return { success: true, movedCount };
@@ -224,6 +226,8 @@ async function switchToWorkspace(workspaceName) {
     }
     
     currentWorkspace = workspaceName;
+    // Ensure "change bookmarks" stays first
+    await ensureChangeBookmarksFirst();
     console.log(`bookspace: Switched to workspace "${workspaceName}" - displaying ${displayedCount} items`);
     isProcessing = false;
     return { success: true, count: displayedCount };
@@ -306,6 +310,8 @@ async function showAllBookmarks() {
     }
     
     currentWorkspace = null;
+    // Ensure "change bookmarks" stays first
+    await ensureChangeBookmarksFirst();
     console.log(`bookspace: Showing all ${count} items from bookspace (maintaining positions)`);
     isProcessing = false;
     return { success: true, count };
@@ -350,6 +356,31 @@ async function getCurrentState() {
 }
 
 /**
+ * Ensure "change bookmarks" bookmark is at index 0
+ */
+async function ensureChangeBookmarksFirst() {
+  try {
+    const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
+    const changeBookmarks = toolbarChildren.find(
+      child => child.type === 'bookmark' && child.title === 'change bookmarks'
+    );
+    
+    if (changeBookmarks) {
+      // Check if it's already at index 0
+      const currentIndex = toolbarChildren.findIndex(c => c.id === changeBookmarks.id);
+      if (currentIndex !== 0) {
+        await browser.bookmarks.move(changeBookmarks.id, {
+          index: 0
+        });
+        console.log('bookspace: Moved "change bookmarks" to position 0');
+      }
+    }
+  } catch (error) {
+    console.error('bookspace: Error ensuring change bookmarks is first:', error);
+  }
+}
+
+/**
  * Create or update the "change bookmarks" bookmark that links to popup.html
  * Always places it at index 0 (first position)
  */
@@ -373,13 +404,7 @@ async function createChangeBookmarksBookmark() {
         console.log('bookspace: Updated "change bookmarks" bookmark URL');
       }
       // Ensure it's at index 0
-      try {
-        await browser.bookmarks.move(existingBookmark.id, {
-          index: 0
-        });
-      } catch (error) {
-        // Might already be at 0, that's okay
-      }
+      await ensureChangeBookmarksFirst();
       return existingBookmark;
     }
     
