@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateDebugDisplay(state);
       
       // Update current workspace display
-      const currentWorkspace = state.currentWorkspace || 'none';
+      const currentWorkspace = state.currentWorkspace || 'bookspace-none';
       
       // Handle bookspace-error state
       const errorBox = document.getElementById('error-box');
@@ -87,13 +87,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentWorkspaceDiv.style.color = '';
       }
       
-      // Display 'bookspace-none' in UI but internally it's 'none'
-      const displayWorkspace = currentWorkspace === 'none' ? 'bookspace-none' : currentWorkspace;
+      // Normalize 'none' to 'bookspace-none' for display
+      const displayWorkspace = (currentWorkspace === 'bookspace-none') ? 'bookspace-none' : currentWorkspace;
       currentWorkspaceDiv.textContent = displayWorkspace;
       currentWorkspaceDiv.className = 'status-value';
       
       // Update button states
-      if (currentWorkspace === 'none') {
+      if (currentWorkspace === 'bookspace-none') {
         bookspaceNoneBtn.classList.add('active');
         bookspaceAllBtn.classList.remove('active');
       } else if (currentWorkspace === 'bookspace-all') {

@@ -231,8 +231,8 @@ async function switchToWorkspace(workspaceName) {
     
     // First, if there's a current workspace, move its bookmarks back into their folder
     if (currentWorkspace && currentWorkspace !== workspaceName) {
-      // If previous workspace was "none", we need to move items back differently
-      if (currentWorkspace.toLowerCase() === 'none') {
+      // If previous workspace was "bookspace-none", we need to move items back differently
+      if (currentWorkspace.toLowerCase() === 'bookspace-none') {
         // Move all toolbar items (except bookspace and change bookmarks) back into bookspace
         const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
         const itemsToMove = toolbarChildren.filter(
@@ -380,7 +380,7 @@ async function showNoBookmarks() {
   }
   
   // Do nothing if already in bookspace-none
-  if (currentWorkspace && currentWorkspace.toLowerCase() === 'none') {
+  if (currentWorkspace && currentWorkspace.toLowerCase() === 'bookspace-none') {
     console.log('bookspace: Already in bookspace-none, no action needed');
     return { success: true, message: 'Already in bookspace-none' };
   }
@@ -396,7 +396,7 @@ async function showNoBookmarks() {
     const toolbarCountBefore = await countItemsInFolder(TOOLBAR_ID, false);
     
     // First, if there's a current workspace, move its bookmarks back into their folder
-    if (currentWorkspace && currentWorkspace.toLowerCase() !== 'none') {
+    if (currentWorkspace && currentWorkspace.toLowerCase() !== 'bookspace-none') {
       // If previous workspace was "bookspace-all", items are at toolbar root - move them to bookspace folder
       if (currentWorkspace.toLowerCase() === 'bookspace-all') {
         logTransitionPath('from bookspace-all');
@@ -478,7 +478,7 @@ async function showNoBookmarks() {
     }
     
     // Update the workspace state to bookspace-none
-    currentWorkspace = 'none';
+    currentWorkspace = 'bookspace-none';
     // Ensure "change bookmarks" stays first
     await ensureChangeBookmarksFirst();
     
@@ -523,7 +523,7 @@ async function showAllBookmarks() {
     
     // First, if there's a current workspace, move its bookmarks back into their folder
     if (currentWorkspace) {
-      if (currentWorkspace.toLowerCase() === 'none') {
+      if (currentWorkspace.toLowerCase() === 'bookspace-none') {
         logTransitionPath('from bookspace-none');
       } else {
         logTransitionPath('from regular workspace');
