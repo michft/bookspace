@@ -269,22 +269,32 @@ async function showAllBookmarks() {
  * Get current state
  */
 async function getCurrentState() {
-  const bookspaceFolder = await findSubfolder(TOOLBAR_ID, BOOKSPACE_FOLDER_NAME);
-  const isOrganized = !!bookspaceFolder;
-  
-  let workspaceFolders = [];
-  if (bookspaceFolder) {
-    const children = await getFolderChildren(bookspaceFolder.id);
-    workspaceFolders = children
-      .filter(c => c.type === 'folder')
-      .map(c => c.title);
+  try {
+    const bookspaceFolder = await findSubfolder(TOOLBAR_ID, BOOKSPACE_FOLDER_NAME);
+    const isOrganized = !!bookspaceFolder;
+    
+    let workspaceFolders = [];
+    if (bookspaceFolder) {
+      const children = await getFolderChildren(bookspaceFolder.id);
+      workspaceFolders = children
+        .filter(c => c.type === 'folder')
+        .map(c => c.title);
+    }
+    
+    return {
+      isOrganized,
+      currentWorkspace,
+      workspaceFolders
+    };
+  } catch (error) {
+    console.error('bookspace: Error getting current state:', error);
+    return {
+      isOrganized: false,
+      currentWorkspace: null,
+      workspaceFolders: [],
+      error: error.message
+    };
   }
-  
-  return {
-    isOrganized,
-    currentWorkspace,
-    workspaceFolders
-  };
 }
 
 // Initialize on extension load
