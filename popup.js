@@ -22,12 +22,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       const state = await browser.runtime.sendMessage({ action: 'getState' });
       
       // Update current workspace display
-      const currentWorkspace = state.currentWorkspace || 'bookspace-none';
-      currentWorkspaceDiv.textContent = currentWorkspace;
+      const currentWorkspace = state.currentWorkspace || 'none';
+      // Display 'bookspace-none' in UI but internally it's 'none'
+      const displayWorkspace = currentWorkspace === 'none' ? 'bookspace-none' : currentWorkspace;
+      currentWorkspaceDiv.textContent = displayWorkspace;
       currentWorkspaceDiv.className = 'status-value';
       
       // Update button states
-      if (currentWorkspace === 'bookspace-none') {
+      if (currentWorkspace === 'none') {
         bookspaceNoneBtn.classList.add('active');
         bookspaceAllBtn.classList.remove('active');
       } else if (currentWorkspace === 'bookspace-all') {
@@ -63,8 +65,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     // Check if already in this workspace - no action needed
+    // Normalize "bookspace-none" to "none" for comparison
+    const normalizedWorkspaceName = (workspaceName.toLowerCase() === 'bookspace-none') ? 'none' : workspaceName.toLowerCase();
     const state = await browser.runtime.sendMessage({ action: 'getState' });
-    if (state.currentWorkspace && state.currentWorkspace.toLowerCase() === workspaceName.toLowerCase()) {
+    if (state.currentWorkspace && state.currentWorkspace.toLowerCase() === normalizedWorkspaceName) {
       return; // Already in this workspace, no action needed
     }
     
