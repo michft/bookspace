@@ -143,6 +143,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const info = await browser.runtime.sendMessage({ action: 'getContainerInfo' });
       
+      // Get current workspace state to sync highlighting
+      const state = await browser.runtime.sendMessage({ action: 'getState' });
+      const currentWorkspace = state.currentWorkspace;
+      
       // Update current container display
       if (info.currentContainer) {
         currentContainerSpan.textContent = info.currentContainer;
@@ -157,8 +161,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (info.containers && info.containers.length > 0) {
         for (const container of info.containers) {
           const tag = document.createElement('span');
-          tag.className = 'tag' + (container.name === info.currentContainer ? ' current' : '');
+          // Highlight based on current workspace (synced with Current Workspace section)
+          tag.className = 'tag' + (container.name === currentWorkspace ? ' current' : '');
           tag.textContent = container.name;
+          // Add click handler to switch workspace
+          tag.addEventListener('click', () => {
+            switchWorkspace(container.name);
+          });
           containerListDiv.appendChild(tag);
         }
       } else {
