@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Bookspace",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Load bookmarks from a folder matching the workspace name when a workspace is loaded",
   "homepage_url": "https://github.com/michft/bookspace",
   "icons": {
