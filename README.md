@@ -1,5 +1,13 @@
 # Bookspace
 
+<div style="background-color: #ff0000; color: #ffffff; padding: 20px; border: 3px solid #cc0000; border-radius: 8px; margin: 20px 0; font-size: 18px; font-weight: bold; text-align: center;">
+
+⚠️ **WARNING: This is ALPHA Software, version 0.0.1** ⚠️
+
+**Things will be broken. This is NOT ready for production use yet.**
+
+</div>
+
 A web extension for Zen Browser that organizes bookmarks by workspace using folders.
 
 ## How It Works
