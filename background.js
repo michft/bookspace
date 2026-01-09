@@ -253,6 +253,28 @@ async function switchToWorkspace(workspaceName) {
         const bookspaceCountAfter = await countItemsInFolder(bookspaceFolder.id, true);
         logTransitionMove(itemsToMove.length, 'toolbar', 'bookspace');
         console.info(`bookspace: [SUMMARY] Moved back ${itemsToMove.length} items to bookspace`);
+      } else if (currentWorkspace.toLowerCase() === 'bookspace-all') {
+        // Handle transition from bookspace-all
+        // Move all toolbar items back into bookspace folder
+        const toolbarChildren = await getFolderChildren(TOOLBAR_ID);
+        const itemsToMove = toolbarChildren.filter(
+          item => item.id !== bookspaceFolder.id && 
+                  !(item.type === 'bookmark' && item.title === 'change bookmarks test')
+        );
+        
+        for (const item of itemsToMove) {
+          try {
+            await browser.bookmarks.move(item.id, {
+              parentId: bookspaceFolder.id
+            });
+          } catch (error) {
+            console.error(`bookspace: Error moving "${item.title}" back:`, error);
+          }
+        }
+        
+        const bookspaceCountAfter = await countItemsInFolder(bookspaceFolder.id, true);
+        logTransitionMove(itemsToMove.length, 'toolbar', 'bookspace');
+        console.info(`bookspace: [SUMMARY] Moved back ${itemsToMove.length} items from bookspace-all to bookspace`);
       } else {
         const previousWorkspaceFolder = await findSubfolder(bookspaceFolder.id, currentWorkspace);
         
