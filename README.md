@@ -1,7 +1,7 @@
 
 #⚠️ WARNING: This is ALPHA Software, version 0.0.1 ⚠️
 
-# Things will be broken. This is NOT ready for production use yet.
+### Things will be broken. This is NOT ready for production use yet.
 
 # Bookspace
 
