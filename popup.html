@@ -7,13 +7,23 @@
       box-sizing: border-box;
     }
     body {
-      width: 320px;
+      width: 1200px;
       padding: 15px;
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       font-size: 13px;
       background: #1e1e2e;
       color: #cdd6f4;
+    }
+    .main-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr 600px;
+      gap: 16px;
+      margin-top: 12px;
+    }
+    .column {
+      display: flex;
+      flex-direction: column;
     }
     h1 {
       font-size: 18px;
@@ -31,6 +41,7 @@
       border-radius: 8px;
       padding: 12px;
       margin-bottom: 12px;
+      width: 100%;
     }
     .status-label {
       font-size: 11px;
@@ -145,6 +156,8 @@
       padding: 10px;
       background: #313244;
       border-radius: 6px;
+      margin-bottom: 12px;
+      width: 100%;
     }
     .info strong {
       color: #cdd6f4;
@@ -157,9 +170,11 @@
       background: #181825;
       border-radius: 6px;
       margin-top: 12px;
+      margin-bottom: 12px;
       font-family: 'Courier New', monospace;
       max-height: 200px;
       overflow-y: auto;
+      width: 100%;
     }
     .debug-header {
       font-size: 11px;
@@ -175,7 +190,7 @@
     .debug-key {
       color: #89b4fa;
       display: inline-block;
-      min-width: 140px;
+      min-width: 100px;
     }
     .debug-value {
       color: #a6e3a1;
@@ -271,16 +286,6 @@
 <body>
   <h1>Bookspace</h1>
   
-  <div class="status-card">
-    <div class="status-label">Current Workspace</div>
-    <div id="current-workspace" class="status-value inactive">bookspace-none</div>
-    <div id="workspace-list" class="workspace-list"></div>
-    <div class="button-group" style="margin-top: 12px;">
-      <button id="bookspace-none-btn" class="btn-secondary">bookspace-none</button>
-      <button id="bookspace-all-btn" class="btn-secondary">bookspace-all</button>
-    </div>
-  </div>
-  
   <div id="message" class="message"></div>
   
   <div id="error-box" class="error-box">
@@ -293,35 +298,53 @@
     Create folders inside bookspace matching your workspace names. Attach Firefox containers to workspace tabs with names matching your bookspace folders. The extension automatically detects workspaces from container names. You can also manually switch workspaces by clicking workspace names.
   </div>
   
-  <div class="status-card">
-    <div class="status-label">Container Info</div>
-    <div id="container-info">
-      <div class="info-row">
-        <span class="info-label">Current Tab Container:</span>
-        <span id="current-container" class="info-value">Loading...</span>
+  <div class="main-container">
+    <div class="column">
+      <div class="status-card">
+        <div class="status-label">Current Workspace</div>
+        <div id="current-workspace" class="status-value inactive">bookspace-none</div>
+        <div id="workspace-list" class="workspace-list"></div>
+        <div class="button-group" style="margin-top: 12px;">
+          <button id="bookspace-none-btn" class="btn-secondary">bookspace-none</button>
+          <button id="bookspace-all-btn" class="btn-secondary">bookspace-all</button>
+        </div>
       </div>
-      <div class="info-row">
-        <span class="info-label">Available Containers:</span>
-        <div id="container-list" class="tag-list"></div>
+      
+      <div class="status-card">
+        <div class="status-label">Container Info</div>
+        <div id="container-info">
+          <div class="info-row">
+            <span class="info-label">Current Tab Container:</span>
+            <span id="current-container" class="info-value">Loading...</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Available Containers:</span>
+            <div id="container-list" class="tag-list"></div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-  
-  <div class="status-card">
-    <div class="status-label">Bookspace Folders</div>
-    <div id="bookspace-folders">
-      <div id="folder-list" class="folder-list">Loading...</div>
+    
+    <div class="column">
+      <div class="status-card">
+        <div class="status-label">Bookspace Folders</div>
+        <div id="bookspace-folders">
+          <div id="folder-list" class="folder-list">Loading...</div>
+        </div>
+      </div>
     </div>
-  </div>
-  
-  <div class="debug">
-    <div class="debug-header">🔍 Debug State</div>
-    <div id="debug-content"></div>
-  </div>
-  
-  <div class="debug">
-    <div class="debug-header">🔧 API Availability</div>
-    <div id="api-debug-content"></div>
+    
+    <div class="column">
+      <div class="debug">
+        <div class="debug-header">🔍 Debug State</div>
+        <div id="debug-content"></div>
+      </div>
+      
+      <div class="debug">
+        <div class="debug-header">🔧 API Availability</div>
+        <div id="api-debug-content"></div>
+      </div>
+    </div>
   </div>
   
   <script src="popup.js"></script>
