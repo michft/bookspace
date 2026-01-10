@@ -7,6 +7,8 @@
 
 A web extension for Zen Browser that organizes bookmarks by workspace using folders.
 
+**Video Tutorial**: [Watch on YouTube](https://www.youtube.com/watch?v=lSeBw2X1J0A)
+
 ## How It Works
 
 1. **On first load**: All bookmarks in the toolbar are moved into a `bookspace` folder
