@@ -5,6 +5,9 @@ module.exports = {
   collectCoverageFrom: [
     'background.js',
     'popup.js',
+    'state.js',
+    'constants.js',
+    'utils/**/*.js',
     '!**/node_modules/**',
     '!**/tests/**'
   ],
@@ -16,5 +19,11 @@ module.exports = {
       statements: 80
     }
   },
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.js']
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+  transform: {
+    '^.+\\.js$': 'babel-jest'
+  },
+  transformIgnorePatterns: [
+    'node_modules/(?!(webextension-polyfill)/)'
+  ]
 };

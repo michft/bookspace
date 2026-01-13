@@ -975,6 +975,7 @@ async function createChangeBookmarksBookmark() {
   } catch (error) {
     console.error('bookspace: Error creating change bookmarks test bookmark:', error);
   }
+
 }
 
 // Initialize on extension load
